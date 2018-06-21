@@ -1170,14 +1170,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 			res = (res | ERROR_DISABLE_INTER);
 			goto END;
 		}
-#ifdef CONFIG_DRM
-		res = drm_unregister_client(&info->notifier);
-		if (res < 0) {
-			logError(1, "%s ERROR: unregister notifier failed!\n",
-				 tag);
-			goto END;
-		}
-#endif
+
 		switch (typeOfComand[0]) {
 			/*ITO TEST */
 		case 0x01:
@@ -1396,11 +1389,7 @@ static ssize_t stm_fts_cmd_show(struct device *dev,
 		res = ERROR_OP_NOT_ALLOW;
 
 	}
-#ifdef CONFIG_DRM
-	if (drm_register_client(&info->notifier) < 0) {
-		logError(1, "%s ERROR: register notifier failed!\n", tag);
-	}
-#endif
+
 END:
 	size = PAGE_SIZE;
 	index = 0;
