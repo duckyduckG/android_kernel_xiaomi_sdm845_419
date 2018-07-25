@@ -7858,6 +7858,9 @@ int dsi_display_enable(struct dsi_display *display)
 {
 	int rc = 0;
 	struct dsi_display_mode *mode;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct drm_connector *connector = NULL;
+#endif
 
 	if (!display || !display->panel) {
 		DSI_ERR("Invalid params\n");
@@ -7952,6 +7955,14 @@ int dsi_display_enable(struct dsi_display *display)
 		rc = -EINVAL;
 		goto error_disable_panel;
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	rc = dsi_display_set_backlight(connector, display,
+				       display->panel->bl_config.bl_level);
+	if (rc)
+		pr_warn("[%s]failed to restore previous brightness, rc=%d\n",
+			display->name, rc);
+#endif
 
 	goto error;
 
