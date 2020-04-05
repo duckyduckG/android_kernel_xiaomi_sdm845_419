@@ -55,6 +55,11 @@ enum dsi_backlight_type {
 	DSI_BACKLIGHT_MAX,
 };
 
+enum dsi_doze_mode_type {
+	DSI_DOZE_LPM = 0,
+	DSI_DOZE_HBM,
+};
+
 enum bl_update_flag {
 	BL_UPDATE_DELAY_UNTIL_FIRST_FRAME,
 	BL_UPDATE_NONE,
@@ -271,6 +276,8 @@ struct dsi_panel {
 	bool fod_hbm_enabled;;
 	ktime_t fod_hbm_off_time;
 #endif
+	bool doze_enabled;
+	enum dsi_doze_mode_type doze_mode;
 
 	int panel_test_gpio;
 	int power_mode;
@@ -338,6 +345,10 @@ int dsi_panel_get_dfps_caps(struct dsi_panel *panel,
 			    struct dsi_dfps_capabilities *dfps_caps);
 
 int dsi_panel_pre_prepare(struct dsi_panel *panel);
+
+int dsi_panel_set_doze_status(struct dsi_panel *panel, bool status);
+
+int dsi_panel_set_doze_mode(struct dsi_panel *panel, enum dsi_doze_mode_type mode);
 
 int dsi_panel_set_lp1(struct dsi_panel *panel);
 
