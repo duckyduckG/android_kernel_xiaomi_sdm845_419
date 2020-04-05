@@ -212,6 +212,12 @@ struct dsi_read_config {
 };
 #endif
 
+#define BRIGHTNESS_ALPHA_PAIR_LEN 2
+struct brightness_alpha_pair {
+	u32 brightness;
+	u32 alpha;
+};
+
 struct dsi_panel {
 	const char *name;
 	const char *type;
@@ -281,6 +287,9 @@ struct dsi_panel {
 #endif
 	bool doze_enabled;
 	enum dsi_doze_mode_type doze_mode;
+
+	struct brightness_alpha_pair *fod_dim_lut;
+	u32 fod_dim_lut_count;
 
 	int panel_test_gpio;
 	int power_mode;
@@ -360,6 +369,10 @@ int dsi_panel_set_lp2(struct dsi_panel *panel);
 int dsi_panel_set_nolp(struct dsi_panel *panel);
 
 int dsi_panel_prepare(struct dsi_panel *panel);
+
+int dsi_panel_set_fod_hbm(struct dsi_panel *panel, bool status);
+
+u32 dsi_panel_get_fod_dim_alpha(struct dsi_panel *panel);
 
 int dsi_panel_enable(struct dsi_panel *panel);
 
