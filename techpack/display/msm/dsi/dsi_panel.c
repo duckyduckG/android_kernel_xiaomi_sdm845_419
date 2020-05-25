@@ -855,6 +855,20 @@ error:
 	return rc;
 }
 
+static u32 dsi_panel_get_backlight(struct dsi_panel *panel)
+{
+	u32 bl_level;
+
+	if (panel->doze_enabled && panel->doze_mode == DSI_DOZE_HBM)
+		bl_level = panel->bl_config.bl_doze_hbm;
+	else if (panel->doze_enabled && panel->doze_mode == DSI_DOZE_LPM)
+		bl_level = panel->bl_config.bl_doze_lpm;
+	else if (!panel->doze_enabled)
+		bl_level = panel->bl_config.bl_level;
+
+	return bl_level;
+}
+
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl)
 {
 	int rc = 0;
@@ -2662,6 +2676,22 @@ static int dsi_panel_parse_bl_config(struct dsi_panel *panel)
 		panel->bl_config.brightness_max_level = 255;
 	} else {
 		panel->bl_config.brightness_max_level = val;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,disp-doze-lpm-backlight", &val);
+	if (rc) {
+		panel->bl_config.bl_doze_lpm = 0;
+		DSI_DEBUG("[%s] set doze lpm backlight to 0\n", panel->name);
+	} else {
+		panel->bl_config.bl_doze_lpm = val;
+	}
+
+	rc = utils->read_u32(utils->data, "qcom,disp-doze-hbm-backlight", &val);
+	if (rc) {
+		panel->bl_config.bl_doze_hbm = 0;
+		DSI_DEBUG("[%s] set doze hbm backlight to 0\n", panel->name);
+	} else {
+		panel->bl_config.bl_doze_hbm = val;
 	}
 
 	rc = utils->read_u32(utils->data, "qcom,mdss-dsi-bl-ctrl-dcs-subtype",
