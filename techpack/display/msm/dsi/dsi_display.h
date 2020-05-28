@@ -278,6 +278,7 @@ struct dsi_display {
 	u32 clk_gating_config;
 	bool queue_cmd_waits;
 	struct workqueue_struct *dma_cmd_workq;
+	atomic_t fod_ui;
 };
 
 int dsi_display_dev_probe(struct platform_device *pdev);
@@ -742,5 +743,7 @@ int dsi_display_get_panel_vfp(void *display,
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 struct dsi_display *get_primary_display(void);
 #endif
+
+void dsi_display_set_fod_ui(struct dsi_display *display, bool status);
 
 #endif /* _DSI_DISPLAY_H_ */
