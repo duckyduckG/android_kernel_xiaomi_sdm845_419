@@ -30,3 +30,5 @@ ledtrig-usbport.txt
 	- notes on how to use the drivers/usb/core/ledtrig-usbport.c trigger.
 uleds.txt
 	- notes on how to use the uleds driver.
+leds-class-multicolor.txt
+	- notes on how to use multicolor driver.
