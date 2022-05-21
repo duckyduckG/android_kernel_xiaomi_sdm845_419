@@ -2843,6 +2843,19 @@ static int fts_palm_sensor_write(int value)
 #endif
 #endif
 
+#ifdef CONFIG_INPUT_PRESS_NDT
+static int fts_x;
+static int fts_y;
+bool finger_report_flag;
+
+static ssize_t fts_fp_state_get(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, TSP_BUF_SIZE, "%d,%d,%d\n",
+			fts_x, fts_y, finger_report_flag);
+}
+#endif
+
 #ifdef CONFIG_SECURE_TOUCH
 static void fts_secure_touch_notify (struct fts_ts_info *info)
 {
@@ -3167,6 +3180,10 @@ static struct attribute *fts_attr_group[] = {
 	NULL,
 };
 
+#ifdef CONFIG_INPUT_PRESS_NDT
+static DEVICE_ATTR(fp_state, S_IRUGO, fts_fp_state_get,  NULL);
+#endif
+
 #ifdef CONFIG_SECURE_TOUCH
 DEVICE_ATTR(secure_touch_enable, (S_IRUGO | S_IWUSR | S_IWGRP), fts_secure_touch_enable_show,  fts_secure_touch_enable_store);
 DEVICE_ATTR(secure_touch, (S_IRUGO | S_IWUSR | S_IWGRP), fts_secure_touch_show,  NULL);
@@ -3212,8 +3229,6 @@ static void fts_nop_event_handler(struct fts_ts_info *info,
 
 #ifdef CONFIG_INPUT_PRESS_NDT
 static int fts_infod;
-static int fts_x;
-static int fts_y;
 bool fts_is_infod(void)
 {
 	return (fts_infod == 0 ? false : true);
@@ -3229,8 +3244,6 @@ static bool fts_is_in_fodarea(int x, int y)
 	else
 		return false;
 }
-
-bool finger_report_flag;
 
 void fts_get_pointer(int *touch_flag, int *x, int *y)
 {
@@ -3420,6 +3433,7 @@ static void fts_leave_pointer_event_handler(struct fts_ts_info *info,
 	input_report_key(info->input_dev, BTN_INFO, 0);
 	input_sync(info->input_dev);
 	finger_report_flag = false;
+	sysfs_notify(&info->fts_touch_dev->kobj, NULL, "fp_state");
 	fts_x = 0;
 	fts_y = 0;
 	ndt_get_pressure(0, 0, 0);
@@ -3765,6 +3779,7 @@ static void fts_gesture_event_handler(struct fts_ts_info *info,
 				if (!finger_report_flag) {
 					logError(0, "%s  %s finger down in the fod area\n", tag, __func__);
 					finger_report_flag = true;
+					sysfs_notify(&info->fts_touch_dev->kobj, NULL, "fp_state");
 				}
 				input_report_key(info->input_dev, BTN_INFO, 1);
 				input_sync(info->input_dev);
@@ -6323,6 +6338,13 @@ static int fts_probe(struct spi_device *client)
 	}
 
 	dev_set_drvdata(info->fts_touch_dev, info);
+
+#ifdef CONFIG_INPUT_PRESS_NDT
+	error = sysfs_create_file(&info->fts_touch_dev->kobj, &dev_attr_fp_state.attr);
+	if (error) {
+		logError(1, "%s ERROR: Failed to create fp_state sysfs group!\n", tag);
+	}
+#endif
 
 	info->tp_lockdown_info_proc =
 	    proc_create("tp_lockdown_info", 0, NULL, &fts_lockdown_info_ops);
