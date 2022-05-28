@@ -282,9 +282,6 @@ struct dsi_display {
 
 int dsi_display_dev_probe(struct platform_device *pdev);
 int dsi_display_dev_remove(struct platform_device *pdev);
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-int dsi_panel_set_doze_backlight(struct dsi_display *display, u32 bl_lvl);
-#endif
 
 /**
  * dsi_display_get_num_of_displays() - returns number of display devices
