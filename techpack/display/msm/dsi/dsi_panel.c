@@ -360,6 +360,11 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 	return rc;
 }
 
+bool drm_panel_is_dozing(void)
+{
+	return g_panel && g_panel->doze_enabled;
+}
+
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 void drm_dsi_ulps_enable(bool enable)
 {
