@@ -229,18 +229,10 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	drm_dev = dsi_display->drm_dev;
 #endif
 
-#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	mutex_lock(&panel->panel_lock);
-#endif
 	if (!dsi_panel_initialized(panel)) {
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-		pr_info("[%s] set backlight before panel initialized, caching value: %d\n",
-		dsi_display->name, bl_lvl);
-		return -EINVAL;
-#else
 		rc = -EINVAL;
 		goto error;
-#endif
 	}
 
 	panel->bl_config.bl_level = bl_lvl;
@@ -264,27 +256,9 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 		goto error;
 	}
 
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-	if (drm_dev && drm_dev->doze_state == DRM_BLANK_LP1) {
-		rc = dsi_panel_set_doze_backlight(display, (u32)bl_temp);
-		if (rc)
-			DSI_ERR("unable to set doze backlight\n");
-		rc = dsi_panel_enable_doze_backlight(panel, (u32)bl_temp);
-		if (rc)
-			DSI_ERR("unable to enable doze backlight\n");
-	} else if (drm_dev && drm_dev->doze_state == DRM_BLANK_LP2) {
-		DSI_ERR("unable to set doze backlight in LP2 state:%u\n", (u32)bl_temp);
-	} else {
-		drm_dev->doze_brightness = DOZE_BRIGHTNESS_INVALID;
-		rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
-		if (rc)
-			DSI_ERR("unable to set backlight\n");
-	}
-#else
 	rc = dsi_panel_set_backlight(panel, (u32)bl_temp);
 	if (rc)
 		DSI_ERR("unable to set backlight\n");
-#endif
 
 	rc = dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
 			DSI_CORE_CLK, DSI_CLK_OFF);
@@ -295,9 +269,7 @@ int dsi_display_set_backlight(struct drm_connector *connector,
 	}
 
 error:
-#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	mutex_unlock(&panel->panel_lock);
-#endif
 	return rc;
 }
 
@@ -7456,10 +7428,6 @@ int dsi_display_prepare(struct dsi_display *display)
 		DSI_ERR("no valid mode set for the display\n");
 		return -EINVAL;
 	}
-
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-	cancel_delayed_work_sync(&display->panel->cmds_work);
-#endif
 
 	SDE_EVT32(SDE_EVTLOG_FUNC_ENTRY);
 	mutex_lock(&display->display_lock);
