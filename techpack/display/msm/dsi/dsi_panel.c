@@ -17,6 +17,7 @@
 #include "dsi_mi_feature.h"
 #include "dsi_display.h"
 #include "xiaomi_frame_stat.h"
+#include "../../../../kernel/irq/internals.h"
 
 /**
  * topology is currently defined by a set of following 3 values:
@@ -3709,6 +3710,24 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 	esd_config = &panel->esd_config;
 	esd_config->status_mode = ESD_MODE_MAX;
 
+	/* esd-err-flag method will be prefered */
+	esd_config->esd_err_irq_gpio = of_get_named_gpio_flags(
+			panel->panel_of_node,
+			"mi,esd-err-irq-gpio",
+			0,
+			(enum of_gpio_flags *)&(esd_config->esd_err_irq_flags));
+	if (gpio_is_valid(esd_config->esd_err_irq_gpio)) {
+		esd_config->esd_err_irq = gpio_to_irq(esd_config->esd_err_irq_gpio);
+		rc = gpio_request(esd_config->esd_err_irq_gpio, "esd_err_irq_gpio");
+		if (rc)
+			pr_err("%s: Failed to get esd irq gpio %d (code: %d)",
+				__func__, esd_config->esd_err_irq_gpio, rc);
+		else
+			gpio_direction_input(esd_config->esd_err_irq_gpio);
+
+		return 0;
+	}
+
 	esd_config->esd_enabled = utils->read_bool(utils->data,
 		"qcom,esd-check-enabled");
 
@@ -3762,6 +3781,32 @@ static int dsi_panel_parse_esd_config(struct dsi_panel *panel)
 error:
 	panel->esd_config.esd_enabled = false;
 	return rc;
+}
+
+static void dsi_panel_esd_irq_ctrl(struct dsi_panel *panel,
+				  bool enable)
+{
+	struct drm_panel_esd_config *esd_config;
+	struct irq_desc *desc;
+
+	if (!panel || !panel->panel_initialized) {
+		pr_err("[LCD] panel not ready!\n");
+		return;
+	}
+
+	esd_config = &panel->esd_config;
+	if (gpio_is_valid(esd_config->esd_err_irq_gpio)) {
+		if (esd_config->esd_err_irq) {
+			if (enable) {
+				desc = irq_to_desc(esd_config->esd_err_irq);
+				if (!irq_settings_is_level(desc))
+					desc->istate &= ~IRQS_PENDING;
+				enable_irq(esd_config->esd_err_irq);
+			} else {
+				disable_irq_nosync(esd_config->esd_err_irq);
+			}
+		}
+	}
 }
 
 static void dsi_panel_update_util(struct dsi_panel *panel,
@@ -4996,6 +5041,8 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	else {
 		panel->panel_initialized = true;
 	}
+	
+	dsi_panel_esd_irq_ctrl(panel, true);
 
 	if (mi_cfg->gamma_update_flag) {
 		if (mi_cfg->gamma_cfg.update_done_60hz &&
@@ -5167,6 +5214,7 @@ int dsi_panel_disable(struct dsi_panel *panel)
 	mutex_lock(&panel->panel_lock);
 
 	mi_cfg = &panel->mi_cfg;
+	dsi_panel_esd_irq_ctrl(panel, false);
 
 	/* Avoid sending panel off commands when ESD recovery is underway */
 	if (!atomic_read(&panel->esd_recovery_pending)) {
