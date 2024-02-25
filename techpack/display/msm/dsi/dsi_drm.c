@@ -6,6 +6,9 @@
 
 #include <drm/drm_atomic_helper.h>
 #include <drm/drm_atomic.h>
+#include <drm/drm_notifier.h>
+#include <linux/notifier.h>
+#include <linux/pm_wakeup.h>
 
 #include "msm_kms.h"
 #include "sde_connector.h"
@@ -19,6 +22,44 @@
 #define DEFAULT_PANEL_JITTER_DENOMINATOR	1
 #define DEFAULT_PANEL_JITTER_ARRAY_SIZE		2
 #define DEFAULT_PANEL_PREFILL_LINES	25
+
+static BLOCKING_NOTIFIER_HEAD(drm_notifier_list);
+
+struct dsi_bridge *gbridge;
+static struct delayed_work prim_panel_work;
+static atomic_t prim_panel_is_on;
+static struct wakeup_source *prim_panel_wakelock;
+
+struct drm_notify_data g_notify_data;
+
+/*
+ * drm_register_client - register a client notifier
+ * @nb: notifier block to callback when event happens
+ */
+int drm_register_client(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&drm_notifier_list, nb);
+}
+EXPORT_SYMBOL(drm_register_client);
+
+/*
+ * drm_unregister_client - unregister a client notifier
+ * @nb: notifier block to callback when event happens
+ */
+int drm_unregister_client(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&drm_notifier_list, nb);
+}
+EXPORT_SYMBOL(drm_unregister_client);
+
+/*
+ * drm_notifier_call_chain - notify clients of drm_event
+ */
+int drm_notifier_call_chain(unsigned long val, void *v)
+{
+	return blocking_notifier_call_chain(&drm_notifier_list, val, v);
+}
+EXPORT_SYMBOL(drm_notifier_call_chain);
 
 static struct dsi_display_mode_priv_info default_priv_info = {
 	.panel_jitter_numer = DEFAULT_PANEL_JITTER_NUMERATOR,
@@ -164,6 +205,16 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct drm_device *dev = bridge->dev;
+	int event = 0;
+
+	if (dev->doze_state == DRM_BLANK_POWERDOWN) {
+		dev->doze_state = DRM_BLANK_UNBLANK;
+		pr_info("%s power on from power off\n", __func__);
+	}
+
+	event = dev->doze_state;
+	g_notify_data.data = &event;
 
 	if (!bridge) {
 		DSI_ERR("Invalid params\n");
@@ -177,6 +228,22 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 
 	if (bridge->encoder->crtc->state->active_changed)
 		atomic_set(&c_bridge->display->panel->esd_recovery_pending, 0);
+
+	if (c_bridge->display->is_prim_display && atomic_read(&prim_panel_is_on)) {
+		cancel_delayed_work_sync(&prim_panel_work);
+		__pm_relax(prim_panel_wakelock);
+		if (dev->fp_quickon &&
+			(dev->doze_state == DRM_BLANK_LP1 || dev->doze_state == DRM_BLANK_LP2)) {
+			event = DRM_BLANK_POWERDOWN;
+			drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
+			drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
+			dev->fp_quickon = false;
+		}
+		pr_debug("%s panel already on\n", __func__);
+		return;
+	}
+
+	drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
 
 	/* By this point mode should have been validated through mode_fixup */
 	rc = dsi_display_set_mode(c_bridge->display,
@@ -211,6 +278,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 				c_bridge->id, rc);
 		(void)dsi_display_unprepare(c_bridge->display);
 	}
+	drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
 	SDE_ATRACE_END("dsi_display_enable");
 
 	rc = dsi_display_splash_res_cleanup(c_bridge->display);
@@ -290,11 +358,36 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 {
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct drm_device *dev = bridge->dev;
+	int event = 0;
+
+	if (dev->doze_state == DRM_BLANK_UNBLANK) {
+		dev->doze_state = DRM_BLANK_POWERDOWN;
+		pr_info("%s wrong doze state\n", __func__);
+	}
+
+	event = dev->doze_state;
+	g_notify_data.data = &event;
 
 	if (!bridge) {
 		DSI_ERR("Invalid params\n");
 		return;
 	}
+
+	if (c_bridge->display->is_prim_display && !atomic_read(&prim_panel_is_on)) {
+		DSI_ERR("%s Already power off\n", __func__);
+		return;
+	}
+
+	if (dev->doze_state == DRM_BLANK_LP1 || dev->doze_state == DRM_BLANK_LP2) {
+		pr_err("%s doze state can't power off panel\n", __func__);
+		event = DRM_BLANK_POWERDOWN;
+		drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
+		drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
+		return;
+	}
+
+	drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
 
 	SDE_ATRACE_BEGIN("dsi_bridge_post_disable");
 	SDE_ATRACE_BEGIN("dsi_display_disable");
@@ -315,6 +408,27 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 		return;
 	}
 	SDE_ATRACE_END("dsi_bridge_post_disable");
+
+	drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
+
+	if (gbridge)
+		gbridge->base.dev->fp_quickon = false;
+
+	if (c_bridge->display->is_prim_display)
+		atomic_set(&prim_panel_is_on, false);
+}
+
+static void prim_panel_off_delayed_work(struct work_struct *work)
+{
+	mutex_lock(&gbridge->base.lock);
+	if (atomic_read(&prim_panel_is_on)) {
+		dsi_bridge_post_disable(&gbridge->base);
+		__pm_relax(prim_panel_wakelock);
+		gbridge->base.dev->fp_quickon = false;
+		mutex_unlock(&gbridge->base.lock);
+		return;
+	}
+	mutex_unlock(&gbridge->base.lock);
 }
 
 static void dsi_bridge_mode_set(struct drm_bridge *bridge,
@@ -1060,6 +1174,19 @@ struct dsi_bridge *dsi_drm_bridge_init(struct dsi_display *display,
 	}
 
 	encoder->bridge = &bridge->base;
+	encoder->bridge->is_dsi_drm_bridge = true;
+	mutex_init(&encoder->bridge->lock);
+
+	if (display->is_prim_display) {
+		gbridge = bridge;
+		atomic_set(&resume_pending, 0);
+		prim_panel_wakelock = wakeup_source_create("prim_panel_wakelock");
+		wakeup_source_add(prim_panel_wakelock);
+		atomic_set(&prim_panel_is_on, false);
+		init_waitqueue_head(&resume_wait_q);
+		INIT_DELAYED_WORK(&prim_panel_work, prim_panel_off_delayed_work);
+	}
+
 	return bridge;
 error_free_bridge:
 	kfree(bridge);
@@ -1071,6 +1198,13 @@ void dsi_drm_bridge_cleanup(struct dsi_bridge *bridge)
 {
 	if (bridge && bridge->base.encoder)
 		bridge->base.encoder->bridge = NULL;
+
+	if (bridge == gbridge) {
+		atomic_set(&prim_panel_is_on, false);
+		cancel_delayed_work_sync(&prim_panel_work);
+		wakeup_source_remove(prim_panel_wakelock);
+		wakeup_source_destroy(prim_panel_wakelock);
+	}
 
 	kfree(bridge);
 }
