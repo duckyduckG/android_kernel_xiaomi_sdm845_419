@@ -1071,6 +1071,7 @@ static void ax88179_rx_fixup
 		desc->urb->actual_length = 0;
 		stats->rx_length_errors++;
 		return;
+
 	}
 
 	rx_data = desc->head;
