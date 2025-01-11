@@ -18,7 +18,7 @@
 extern uint8_t g_eeprom_mapdata[EEPROM_MAP_DATA_CNT];
 #endif
 
-//#define USE_BU64748 1
+#define USE_BU64748 1
 
 int32_t cam_actuator_construct_default_power_setting(
 	struct cam_sensor_power_ctrl_t *power_info)
