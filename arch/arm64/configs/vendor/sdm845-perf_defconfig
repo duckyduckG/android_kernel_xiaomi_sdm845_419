@@ -732,3 +732,10 @@ CONFIG_DEFAULT_IOSCHED="cfq"
 # Kernel Performance Events And Counters
 #
 CONFIG_PERF_EVENTS=y
+
+#
+# ARM errata workarounds via the alternatives framework
+#
+# CONFIG_CAVIUM_ERRATUM_22375 is not set
+# CONFIG_CAVIUM_ERRATUM_23154 is not set
+# CONFIG_CAVIUM_ERRATUM_27456 is not set
