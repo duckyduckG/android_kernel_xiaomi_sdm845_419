@@ -773,3 +773,8 @@ CONFIG_DEFAULT_CUBIC=y
 # Multimedia core support
 #
 # CONFIG_MEDIA_DIGITAL_TV_SUPPORT is not set
+
+#
+# Scheduler features
+#
+CONFIG_INITRAMFS_IGNORE_SKIP_FLAG=y
