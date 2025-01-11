@@ -778,3 +778,8 @@ CONFIG_DEFAULT_CUBIC=y
 # Scheduler features
 #
 CONFIG_INITRAMFS_IGNORE_SKIP_FLAG=y
+
+#
+# Clock Source drivers
+#
+CONFIG_ARM_ARCH_TIMER_VCT_ACCESS=y
