@@ -726,3 +726,8 @@ CONFIG_DEFAULT_IOSCHED="cfq"
 #
 # CONFIG_INIT_STACK_ALL_ZERO is not set
 # CONFIG_INIT_ON_ALLOC_DEFAULT_ON is not set
+
+#
+# Kernel Performance Events And Counters
+#
+CONFIG_PERF_EVENTS=y
