@@ -8857,6 +8857,12 @@ void ufshcd_apply_pm_quirks(struct ufs_hba *hba)
 }
 EXPORT_SYMBOL(ufshcd_apply_pm_quirks);
 
+static char serial[QUERY_DESC_MAX_SIZE] = {0};
+char *ufs_get_serial(void)
+{
+	return serial;
+}
+
 /**
  * ufshcd_set_dev_ref_clk - set the device bRefClkFreq
  * @hba: per-adapter instance
