@@ -789,3 +789,8 @@ CONFIG_ARM_ARCH_TIMER_VCT_ACCESS=y
 # IEEE 1394 (FireWire) support
 #
 CONFIG_WIREGUARD=y
+
+#
+# Memory Management options
+#
+CONFIG_KSM=y
