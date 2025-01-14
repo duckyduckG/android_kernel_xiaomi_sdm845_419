@@ -794,3 +794,8 @@ CONFIG_WIREGUARD=y
 # Memory Management options
 #
 CONFIG_KSM=y
+
+#
+# RCU Debugging
+#
+CONFIG_DISABLE_TRACE_PRINTK=y
