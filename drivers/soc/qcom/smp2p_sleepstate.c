@@ -31,7 +31,6 @@ static int sleepstate_pm_notifier(struct notifier_block *nb,
 {
 	switch (event) {
 	case PM_SUSPEND_PREPARE:
-		usleep_range(10000, 10500); /* Tuned based on SMP2P latencies */
 		break;
 
 	case PM_POST_SUSPEND:
