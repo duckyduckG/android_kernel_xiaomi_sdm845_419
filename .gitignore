@@ -139,3 +139,14 @@ kernel/configs/android-*.cfg
 #Ignoring Android.bp link file
 #
 Android.bp
+
+#
+# Custom Ignore list
+#
+*.diff
+*.sh
+out/
+techpack/xiaomi-sdm845
+techpack/mi845
+arch/arm64/boot/dts/qcom-sdm845
+arch/arm64/boot/dts/xiaomi
