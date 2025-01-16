@@ -314,9 +314,16 @@ config ENERGY_MODEL
 
 	  If in doubt, say N.
 
+<<<<<<< HEAD
 config WAKEUP_IRQ_DEBUG
 	bool "Debug info of wakeup irq"
 	default y
 	---help---
 	  This enables debug information about wakeup interrupts using
 	  sysfs (/sys/kernel/).
+=======
+config	BOEFFLA_WL_BLOCKER
+		bool "Boeffla generic wakelock blocker driver"
+		depends on PM
+		default y
+>>>>>>> f0b8b3512983 (drivers: base: power: add generic boeffla wakelock blocker driver)
