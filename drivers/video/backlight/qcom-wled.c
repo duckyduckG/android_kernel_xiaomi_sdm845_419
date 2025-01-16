@@ -1729,7 +1729,7 @@ static int wled_probe(struct platform_device *pdev)
 	return PTR_ERR_OR_ZERO(bl);
 };
 
-static void wled_remove(struct platform_device *pdev)
+static int wled_remove(struct platform_device *pdev)
 {
 	struct wled *wled = platform_get_drvdata(pdev);
 
@@ -1739,6 +1739,8 @@ static void wled_remove(struct platform_device *pdev)
 	disable_irq(wled->ovp_irq);
 
 	wled->ovp_irq_disabled = true;
+	
+	return 0;
 }
 
 static const struct of_device_id wled_match_table[] = {
