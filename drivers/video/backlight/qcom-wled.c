@@ -1655,7 +1655,7 @@ static int wled_probe(struct platform_device *pdev)
 	wled->regmap = regmap;
 	wled->dev = &pdev->dev;
 
-	wled->version = (uintptr_t)of_device_get_match_data(&pdev->dev);
+	wled->version = (uintptr_t)device_get_match_data(&pdev->dev);
 	if (!wled->version) {
 		dev_err(&pdev->dev, "Unknown device version\n");
 		return -ENODEV;
