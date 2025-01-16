@@ -439,8 +439,13 @@ static int wled5_ovp_delay(struct wled *wled)
 static int wled_update_status(struct backlight_device *bl)
 {
 	struct wled *wled = bl_get_data(bl);
-	u16 brightness = backlight_get_brightness(bl);
+	u16 brightness = bl->props.brightness;
 	int rc = 0;
+
+	if (bl->props.power != FB_BLANK_UNBLANK ||
+	    bl->props.fb_blank != FB_BLANK_UNBLANK ||
+	    bl->props.state & BL_CORE_FBBLANK)
+		brightness = 0;
 
 	mutex_lock(&wled->lock);
 	if (brightness) {
@@ -1650,7 +1655,7 @@ static int wled_probe(struct platform_device *pdev)
 	wled->regmap = regmap;
 	wled->dev = &pdev->dev;
 
-	wled->version = (uintptr_t)of_device_get_match_data(&pdev->dev);
+	wled->version = (uintptr_t)device_get_match_data(&pdev->dev);
 	if (!wled->version) {
 		dev_err(&pdev->dev, "Unknown device version\n");
 		return -ENODEV;
@@ -1724,7 +1729,7 @@ static int wled_probe(struct platform_device *pdev)
 	return PTR_ERR_OR_ZERO(bl);
 };
 
-static void wled_remove(struct platform_device *pdev)
+static int wled_remove(struct platform_device *pdev)
 {
 	struct wled *wled = platform_get_drvdata(pdev);
 
@@ -1734,6 +1739,8 @@ static void wled_remove(struct platform_device *pdev)
 	disable_irq(wled->ovp_irq);
 
 	wled->ovp_irq_disabled = true;
+	
+	return 0;
 }
 
 static const struct of_device_id wled_match_table[] = {
