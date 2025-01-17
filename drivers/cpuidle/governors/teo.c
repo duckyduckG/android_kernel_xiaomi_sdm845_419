@@ -135,7 +135,9 @@ struct teo_cpu {
 	struct teo_bin state_bins[CPUIDLE_STATE_MAX];
 	unsigned int total;
 	unsigned int tick_hits;
+#ifdef CONFIG_CPU_IDLE_GOV_TEO
 	s64 wfi_timeout_ns;
+#endif
 };
 
 static DEFINE_PER_CPU(struct teo_cpu, teo_cpus);
@@ -483,7 +485,11 @@ end:
 	 */
 	if ((!(drv->states[idx].flags & CPUIDLE_FLAG_POLLING) &&
 	    duration_ns >= TICK_NSEC) || tick_nohz_tick_stopped())
+#ifdef CONFIG_CPU_IDLE_GOV_TEO
 		goto out_wfi_timeout;
+#else
+		return idx;
+#endif
 
 	/*
 	 * The tick is not going to be stopped, so if the target residency of
@@ -496,6 +502,7 @@ end:
 
 out_tick:
 	*stop_tick = false;
+#ifdef CONFIG_CPU_IDLE_GOV_TEO
 out_wfi_timeout:
 	/*
 	 * Set a limit to how long the CPU can remain in WFI in case of a
@@ -511,15 +518,18 @@ out_wfi_timeout:
 		cpu_data->wfi_timeout_ns = duration_ns + WFI_TIMEOUT_NS;
 	else
 		cpu_data->wfi_timeout_ns = 0;
+#endif
 
 	return idx;
 }
 
+#ifdef CONFIG_CPU_IDLE_GOV_TEO
 s64 teo_wfi_timeout_ns(void)
 {
 	struct teo_cpu *cpu_data = this_cpu_ptr(&teo_cpus);
 	return cpu_data->wfi_timeout_ns;
 }
+#endif
 
 /**
  * teo_reflect - Note that governor data for the CPU need to be updated.
