@@ -442,8 +442,9 @@ static int cam_actuator_fw_download(struct cam_actuator_ctrl_t *a_ctrl)
 	write_setting.size = total_bytes;
 	fw_size = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
 			total_bytes) >> PAGE_SHIFT;
-	page = cma_alloc(dev_get_cma_area(a_ctrl->soc_info.dev),
-		fw_size, 0);
+	struct cma *cma_area = a_ctrl->soc_info.dev->cma_area;
+	
+	page = cma_alloc(cma_area, fw_size, 0, false);
 	if (!page) {
 		CAM_ERR(CAM_ACTUATOR, "Failed in allocating i2c_array");
 		release_firmware(fw);
@@ -472,8 +473,7 @@ static int cam_actuator_fw_download(struct cam_actuator_ctrl_t *a_ctrl)
 	}
 	CAM_ERR(CAM_ACTUATOR, "ACTUATOR FW download over..., i = %d", i);
 
-	cma_release(dev_get_cma_area(a_ctrl->soc_info.dev),
-		page, fw_size);
+	cma_release(cma_area, page, fw_size);
 	page = NULL;
 	fw_size = 0;
 	release_firmware(fw);
