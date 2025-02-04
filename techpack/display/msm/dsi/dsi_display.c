@@ -52,6 +52,13 @@ static const struct of_device_id dsi_display_dt_match[] = {
 
 struct dsi_display *primary_display;
 
+const char *dsi_get_display_name(void)
+{
+	if (primary_display)
+		return primary_display->name;
+	else
+		return NULL;
+}
 static void dsi_display_mask_ctrl_error_interrupts(struct dsi_display *display,
 			u32 mask, bool enable)
 {
