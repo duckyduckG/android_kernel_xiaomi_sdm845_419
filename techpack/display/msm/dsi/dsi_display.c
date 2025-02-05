@@ -957,7 +957,7 @@ static int dsi_display_cmd_rx(struct dsi_display *display,
 	flags |= (DSI_CTRL_CMD_FETCH_MEMORY | DSI_CTRL_CMD_READ);
 	if ((m_ctrl->ctrl->host_config.panel_mode == DSI_OP_VIDEO_MODE) ||
 			((cmd->msg.flags & MIPI_DSI_MSG_CMD_DMA_SCHED) &&
-			 (display->enabled)))
+			 (display->panel->panel_initialized)))
 		flags |= DSI_CTRL_CMD_CUSTOM_DMA_SCHED;
 
 	rc = dsi_ctrl_cmd_transfer(m_ctrl->ctrl, &cmd->msg, &flags);
@@ -3033,12 +3033,8 @@ static int dsi_display_broadcast_cmd(struct dsi_display *display,
 		m_flags |= DSI_CTRL_CMD_LAST_COMMAND;
 	}
 
-	/*
-	 * During broadcast command dma scheduling is always recommended.
-	 * As long as the display is enabled and TE is running the
-	 * DSI_CTRL_CMD_CUSTOM_DMA_SCHED flag should be set.
-	 */
-	if (display->enabled) {
+	if ((msg->flags & MIPI_DSI_MSG_CMD_DMA_SCHED) &&
+				(display->panel->panel_initialized)) {
 		flags |= DSI_CTRL_CMD_CUSTOM_DMA_SCHED;
 		m_flags |= DSI_CTRL_CMD_CUSTOM_DMA_SCHED;
 	}
@@ -3211,7 +3207,7 @@ static ssize_t dsi_host_transfer(struct mipi_dsi_host *host,
 			cmd_flags |= DSI_CTRL_CMD_ASYNC_WAIT;
 
 		if ((msg->flags & MIPI_DSI_MSG_CMD_DMA_SCHED) &&
-				(display->enabled))
+				(display->panel->panel_initialized))
 			cmd_flags |= DSI_CTRL_CMD_CUSTOM_DMA_SCHED;
 
 		rc = dsi_ctrl_cmd_transfer(display->ctrl[ctrl_idx].ctrl, msg,
