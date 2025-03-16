@@ -758,7 +758,7 @@ static void dump_regs(struct smb_charger *chg)
 	for (addr = 0x90; addr <= 0x94; addr++)
 		dump_reg(chg, MISC_BASE + addr, "MISC Config");
 
-		dump_reg(chg, MISC_BASE + addr, NULL);
+	dump_reg(chg, MISC_BASE + addr, NULL);
 
 	for (addr = 0x10; addr <= 0x1A; addr++)
 		dump_reg(chg, 0x1700 + addr, "PDPHY INT");
