@@ -507,7 +507,7 @@ static int smb2_parse_dt(struct smb2 *chip)
 					&chg->otg_delay_ms);
 	if (rc < 0)
 		chg->otg_delay_ms = OTG_DEFAULT_DEGLITCH_TIME_MS;
-		rc = of_property_read_u32(node, "qcom,fcc-low-temp-delta",
+	rc = of_property_read_u32(node, "qcom,fcc-low-temp-delta",
 				&chip->dt.jeita_low_cc_delta);
 
 	if (rc < 0)
@@ -754,7 +754,6 @@ static int smb2_usb_set_prop(struct power_supply *psy,
 			rc = -EINVAL;
 			break;
 		}
-
 		goto unlock;
 	}
 
