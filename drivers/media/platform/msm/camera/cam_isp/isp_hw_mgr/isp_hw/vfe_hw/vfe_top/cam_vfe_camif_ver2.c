@@ -248,8 +248,9 @@ static int cam_vfe_camif_resource_start(
 		rsrc_data->first_line;
 	epoch1_irq_mask = rsrc_data->reg_data->epoch_line_cfg & 0xFFFF;
 	computed_epoch_line_cfg = (epoch0_irq_mask << 16) | epoch1_irq_mask;
-    if (g_operation_mode == 0 || g_operation_mode == 0x8006)
+    if (g_operation_mode == 0 || g_operation_mode == 0x8006) {
         computed_epoch_line_cfg = rsrc_data->reg_data->epoch_line_cfg;
+	}
 	cam_io_w_mb(computed_epoch_line_cfg,
 		rsrc_data->mem_base + rsrc_data->camif_reg->epoch_irq);
 	CAM_DBG(CAM_ISP, "first_line:%u last_line:%u epoch_line_cfg: 0x%x",
