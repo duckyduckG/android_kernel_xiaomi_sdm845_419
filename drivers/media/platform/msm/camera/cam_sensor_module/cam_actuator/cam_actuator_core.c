@@ -5,6 +5,7 @@
 
 #include <linux/module.h>
 #include <linux/firmware.h>
+#include <linux/dma-contiguous.h>
 #include <cam_sensor_cmn_header.h>
 #include "cam_actuator_core.h"
 #include "cam_sensor_util.h"
@@ -443,7 +444,7 @@ static int cam_actuator_fw_download(struct cam_actuator_ctrl_t *a_ctrl)
 	fw_size = PAGE_ALIGN(sizeof(struct cam_sensor_i2c_reg_array) *
 			total_bytes) >> PAGE_SHIFT;
 	page = cma_alloc(dev_get_cma_area(a_ctrl->soc_info.dev),
-		fw_size, 0);
+		fw_size, 0, GFP_KERNEL);
 	if (!page) {
 		CAM_ERR(CAM_ACTUATOR, "Failed in allocating i2c_array");
 		release_firmware(fw);
