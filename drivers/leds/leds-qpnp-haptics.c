@@ -1245,7 +1245,10 @@ static int qpnp_haptics_auto_mode_config(struct hap_chip *chip, int time_ms)
 			ares_cfg.calibrate_at_eop = -EINVAL;
 		}
 
-		vmax_mv = HAP_VMAX_MAX_MV;
+		if (chip->vmax_mv >= 2812)
+			vmax_mv = HAP_VMAX_MAX_MV;
+		else
+			vmax_mv = chip->vmax_mv;
 		rc = qpnp_haptics_vmax_config(chip, vmax_mv, true);
 		if (rc < 0)
 			return rc;
