@@ -445,6 +445,11 @@ struct batt_params {
 	struct timespec		last_soc_change_time;
 };
 
+struct fg_saved_data {
+	union power_supply_propval val;
+	unsigned long last_req_expires;
+};
+
 struct fg_dev {
 	struct thermal_zone_device	*tz_dev;
 	struct device		*dev;

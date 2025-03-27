@@ -26,6 +26,7 @@
 #define FG_BATT_SOC_PMI8998		0x10
 #define FG_BATT_INFO_PMI8998		0x11
 #define FG_MEM_INFO_PMI8998		0x0D
+#define FG_RATE_LIM_MS			(2 * MSEC_PER_SEC)
 
 /* SRAM address and offset in ascending order */
 #define ESR_PULSE_THRESH_WORD		2
@@ -175,6 +176,7 @@ struct fg_dt_props {
 	bool    use_esr_sw;
 	bool	disable_esr_pull_dn;
 	bool    disable_fg_twm;
+	bool	soc_irq_disable;
 	int	cutoff_volt_mv;
 	int	empty_volt_mv;
 	int	vbatt_low_thr_mv;
@@ -241,6 +243,7 @@ struct fg_gen3_chip {
 	struct fg_ttf		ttf;
 	struct delayed_work	ttf_work;
 	struct delayed_work	pl_enable_work;
+	struct fg_saved_data	saved_data[POWER_SUPPLY_PROP_MAX];
 	enum slope_limit_status	slope_limit_sts;
 	char			batt_profile[PROFILE_LEN];
 	int			esr_timer_charging_default[NUM_ESR_TIMERS];
@@ -623,7 +626,10 @@ static int fg_get_battery_temp(struct fg_dev *fg, int *val)
 
 	temp = ((buf[1] & BATT_TEMP_MSB_MASK) << 8) |
 		(buf[0] & BATT_TEMP_LSB_MASK);
+<<<<<<< HEAD
 
+=======
+>>>>>>> 26d155c13edd (drivers: power: import fg related changes from disrupt kernel)
 	/* Value is in 0.25Kelvin; Convert it to deciDegC */
 	*val = DIV_ROUND_CLOSEST((temp - 273*4) * 10, 4);
 	return 0;
@@ -3753,8 +3759,36 @@ static int fg_psy_get_property(struct power_supply *psy,
 				       union power_supply_propval *pval)
 {
 	struct fg_gen3_chip *chip = power_supply_get_drvdata(psy);
+	struct fg_saved_data *sd = chip->saved_data + psp;
+	union power_supply_propval typec_sts = { .intval = -1 };
 	struct fg_dev *fg = &chip->fg;
 	int rc = 0;
+
+switch (psp) {
+	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
+	case POWER_SUPPLY_PROP_RESISTANCE_ID:
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX_DESIGN:
+	case POWER_SUPPLY_PROP_CYCLE_COUNT_ID:
+	case POWER_SUPPLY_PROP_CHARGE_NOW:
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+	case POWER_SUPPLY_PROP_SOC_REPORTING_READY:
+		/* These props don't require a fg query; don't ratelimit them */
+		break;
+	default:
+		if (!sd->last_req_expires)
+			break;
+
+		if (usb_psy_initialized(fg))
+			power_supply_get_property(fg->usb_psy,
+				POWER_SUPPLY_PROP_TYPEC_MODE, &typec_sts);
+
+		if (typec_sts.intval == POWER_SUPPLY_TYPEC_NONE &&
+			time_before(jiffies, sd->last_req_expires)) {
+			*pval = sd->val;
+			return 0;
+		}
+		break;
+	}
 
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CAPACITY:
@@ -3902,6 +3936,8 @@ static int fg_psy_get_property(struct power_supply *psy,
 	if (rc < 0)
 		return -ENODATA;
 
+	sd->val = *pval;
+	sd->last_req_expires = jiffies + msecs_to_jiffies(FG_RATE_LIM_MS);
 	return 0;
 }
 
@@ -5486,6 +5522,9 @@ static int fg_parse_dt(struct fg_gen3_chip *chip)
 			chip->dt.bmd_en_delay_ms = temp;
 	}
 
+	chip->dt.soc_irq_disable =
+		of_property_read_bool(node, "google,fg-soc-irq-disable");
+
 	chip->dt.sync_sleep_threshold_ma = -EINVAL;
 	rc = of_property_read_u32(node,
 		"qcom,fg-sync-sleep-threshold-ma", &temp);
@@ -5824,6 +5863,8 @@ static void fg_cleanup(struct fg_gen3_chip *chip)
 	dev_set_drvdata(fg->dev, NULL);
 }
 
+#define FG_DELAY_BATT_ID_MS 1000
+#define FG_DELAY_SOC_WORK_MS 1000
 static int fg_gen3_probe(struct platform_device *pdev)
 {
 	struct fg_gen3_chip *chip;
@@ -6010,6 +6051,21 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	if (fg->irqs[SOC_UPDATE_IRQ].irq)
 		disable_irq_nosync(fg->irqs[SOC_UPDATE_IRQ].irq);
 
+	if (chip->dt.soc_irq_disable) {
+		if (fg_irqs[MSOC_EMPTY_IRQ].irq)
+			disable_irq_nosync(fg_irqs[MSOC_EMPTY_IRQ].irq);
+		if (fg_irqs[MSOC_FULL_IRQ].irq)
+			disable_irq_nosync(fg_irqs[MSOC_FULL_IRQ].irq);
+		if (fg_irqs[MSOC_HIGH_IRQ].irq)
+			disable_irq_nosync(fg_irqs[MSOC_HIGH_IRQ].irq);
+		if (fg_irqs[MSOC_LOW_IRQ].irq)
+			disable_irq_nosync(fg_irqs[MSOC_LOW_IRQ].irq);
+		if (fg_irqs[MSOC_DELTA_IRQ].irq)
+			disable_irq_nosync(fg_irqs[MSOC_DELTA_IRQ].irq);
+		if (fg_irqs[BSOC_DELTA_IRQ].irq)
+			disable_irq_nosync(fg_irqs[BSOC_DELTA_IRQ].irq);
+	}
+
 	/* Keep BSOC_DELTA_IRQ disabled until we require it */
 	vote(fg->delta_bsoc_irq_en_votable, DELTA_BSOC_IRQ_VOTER, false, 0);
 
@@ -6040,8 +6096,10 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	}
 
 	device_init_wakeup(fg->dev, true);
-	schedule_delayed_work(&fg->profile_load_work, 0);
-	schedule_delayed_work(&fg->soc_work, 0);
+	schedule_delayed_work(&fg->profile_load_work,
+			      msecs_to_jiffies(FG_DELAY_BATT_ID_MS));
+	schedule_delayed_work(&fg->soc_work,
+			      msecs_to_jiffies(FG_DELAY_SOC_WORK_MS));
 
 	fg->param.batt_soc = -EINVAL;
 	schedule_delayed_work(&fg->soc_monitor_work,
