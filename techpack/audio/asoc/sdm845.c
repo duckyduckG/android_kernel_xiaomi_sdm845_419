@@ -32,6 +32,7 @@
 #include "codecs/wcd934x/wcd934x-mbhc.h"
 #include "codecs/wsa881x.h"
 #include <linux/regulator/consumer.h>
+#include <soc/qcom/socinfo.h>
 
 #define DRV_NAME "sdm845-asoc-snd"
 
@@ -174,6 +175,8 @@ struct msm_asoc_mach_data {
 	struct device_node *adc2_sel_gpio_p; /* used by pinctrl API */
 	struct snd_info_entry *codec_root;
 	struct msm_pinctrl_info pinctrl_info;
+	struct regulator *us_p_power;
+	struct regulator *us_n_power;
 	struct snd_soc_component *component;
 	struct work_struct adsp_power_up_work;
 };
@@ -3410,6 +3413,18 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Headset Mic2", NULL),
 };
 
+static const struct snd_soc_dapm_widget sdm845_polaris_dapm_widgets[] = {
+	SND_SOC_DAPM_MUX("External AMIC2 Mux", SND_SOC_NOPM, 0, 0, &ext_amc2_mux),
+	SND_SOC_DAPM_INPUT("AMIC2_EXT_0"),
+	SND_SOC_DAPM_INPUT("AMIC2_EXT_1"),
+};
+
+static const struct snd_soc_dapm_route sdm845_polaris_dapm_routes[] = {
+	{"AMIC2", NULL, "External AMIC2 Mux"},
+	{"External AMIC2 Mux", "default", "AMIC2_EXT_0"},
+	{"External AMIC2 Mux", "Dual_ADC", "AMIC2_EXT_1"},
+};
+
 static inline int param_is_mask(int p)
 {
 	return (p >= SNDRV_PCM_HW_PARAM_FIRST_MASK) &&
@@ -4190,6 +4205,19 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 
 	snd_soc_dapm_add_routes(dapm, wcd_audio_paths,
 				ARRAY_SIZE(wcd_audio_paths));
+
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_URSA ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_EQUULEUS ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS) {
+		pr_info("add the External AMIC2 Mux\n");
+		snd_soc_dapm_new_controls(dapm, sdm845_polaris_dapm_widgets,
+				ARRAY_SIZE(sdm845_polaris_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, sdm845_polaris_dapm_routes,
+				ARRAY_SIZE(sdm845_polaris_dapm_routes));
+	}
 
 	snd_soc_dapm_ignore_suspend(dapm, "Handset Mic");
 	snd_soc_dapm_ignore_suspend(dapm, "AMIC2");
@@ -6621,6 +6649,24 @@ static struct snd_soc_dai_link msm_quat_mi2s_tas2559_dai_links[] = {
 	},
 };
 
+static struct snd_soc_dai_link msm_quat_mi2s_tas2557_dai_links[] = {
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tas2557.2-004c",
+		.codec_dai_name = "tas2557 ASI1",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm_mi2s_be_ops,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+};
+
 static struct snd_soc_dai_link msm_tavil_snd_card_dai_links[
 			 ARRAY_SIZE(msm_common_dai_links) +
 			 ARRAY_SIZE(msm_tavil_fe_dai_links) +
@@ -6631,7 +6677,8 @@ static struct snd_soc_dai_link msm_tavil_snd_card_dai_links[
 			 ARRAY_SIZE(ext_disp_be_dai_link) +
 			 ARRAY_SIZE(msm_mi2s_be_dai_links) +
 			 ARRAY_SIZE(msm_auxpcm_be_dai_links) +
-			 ARRAY_SIZE(msm_quat_mi2s_tas2559_dai_links)];
+			 ARRAY_SIZE(msm_quat_mi2s_tas2559_dai_links) +
+			 ARRAY_SIZE(msm_quat_mi2s_tas2557_dai_links)];
 
 static int msm_snd_card_tavil_late_probe(struct snd_soc_card *card)
 {
@@ -6990,10 +7037,21 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			       sizeof(msm_mi2s_be_dai_links));
 			total_links += ARRAY_SIZE(msm_mi2s_be_dai_links);
 
-			memcpy(msm_tavil_snd_card_dai_links + total_links,
-			       msm_quat_mi2s_tas2559_dai_links,
-			       sizeof(msm_quat_mi2s_tas2559_dai_links));
-			total_links += ARRAY_SIZE(msm_quat_mi2s_tas2559_dai_links);
+			if ((get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) ||
+				(get_hw_version_platform() == HARDWARE_PLATFORM_URSA) ||
+				(get_hw_version_platform() == HARDWARE_PLATFORM_EQUULEUS) ||
+				(get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS)) {
+				memcpy(msm_tavil_snd_card_dai_links + total_links,
+						msm_quat_mi2s_tas2557_dai_links,
+						sizeof(msm_quat_mi2s_tas2557_dai_links));
+				total_links += ARRAY_SIZE(msm_quat_mi2s_tas2557_dai_links);
+			} else if ((get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) ||
+			(get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM)) {
+				memcpy(msm_tavil_snd_card_dai_links + total_links,
+						msm_quat_mi2s_tas2559_dai_links,
+						sizeof(msm_quat_mi2s_tas2559_dai_links));
+				total_links += ARRAY_SIZE(msm_quat_mi2s_tas2559_dai_links);
+			}
 		}
 		if (of_property_read_bool(dev->of_node,
 					  "qcom,auxpcm-audio-intf")) {
@@ -7522,6 +7580,11 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct msm_asoc_mach_data *pdata =
 				snd_soc_card_get_drvdata(card);
+
+ 	if (pdata->us_p_power)
+		regulator_put(pdata->us_p_power);
+	if (pdata->us_n_power)
+		regulator_put(pdata->us_n_power);
 
 	audio_notifier_deregister("sdm845");
 	if (pdata->us_euro_gpio > 0) {
