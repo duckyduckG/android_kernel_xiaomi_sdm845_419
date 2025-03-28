@@ -1620,6 +1620,12 @@ static int wcd_mbhc_usb_c_analog_setup_gpios(struct wcd_mbhc *mbhc,
 		WCD_MBHC_REG_UPDATE_BITS(WCD_MBHC_MIC_CLAMP_CTL, 2);
 		mbhc->mbhc_cfg->enable_dual_adc_gpio(mbhc->mbhc_cfg->dual_adc_gpio_node, 0);
 
+		/*using hardware auto switch gnd and mic if support*/
+		if (config->euro_us_hw_switch_gpio_p) {
+			msm_cdc_pinctrl_select_active_state(config->euro_us_hw_switch_gpio_p);
+			msleep(200);
+			pr_info("hardware auto switch enable\n");
+		}
 		if (config->usbc_en1_gpio_p)
 			rc = msm_cdc_pinctrl_select_active_state(
 				config->usbc_en1_gpio_p);
@@ -1635,6 +1641,11 @@ static int wcd_mbhc_usb_c_analog_setup_gpios(struct wcd_mbhc *mbhc,
 		if (config->usbc_force_gpio_p)
 			msm_cdc_pinctrl_select_sleep_state(
 				config->usbc_force_gpio_p);
+
+		if (config->euro_us_hw_switch_gpio_p) {
+			msm_cdc_pinctrl_select_sleep_state(config->euro_us_hw_switch_gpio_p);
+			pr_info("hardware auto switch disable\n");
+		}
 
 		mbhc->mbhc_cfg->enable_dual_adc_gpio(mbhc->mbhc_cfg->dual_adc_gpio_node, 1);
 
@@ -1864,6 +1875,17 @@ int wcd_mbhc_start(struct wcd_mbhc *mbhc, struct wcd_mbhc_config *mbhc_cfg)
 					"qcom,usbc-analog-force_detect_gpio",
 					&config->usbc_force_gpio,
 					&config->usbc_force_gpio_p);
+			if (rc)
+				goto err;
+		}
+
+		if (of_find_property(card->dev->of_node,
+					"qcom,hw-auto-sw-en-gpio",
+					NULL)) {
+			rc = wcd_mbhc_init_gpio(mbhc, mbhc_cfg,
+					"qcom,hw-auto-sw-en-gpio",
+					&config->euro_us_hw_switch_gpio,
+					&config->euro_us_hw_switch_gpio_p);
 			if (rc)
 				goto err;
 		}
