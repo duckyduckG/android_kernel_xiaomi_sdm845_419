@@ -578,7 +578,8 @@ void cam_sensor_shutdown(struct cam_sensor_ctrl_t *s_ctrl)
 	struct cam_sensor_power_ctrl_t *power_info =
 		&s_ctrl->sensordata->power_info;
 	int rc = 0;
-
+	
+	s_ctrl->is_probe_succeed = 0;
 	if (s_ctrl->sensor_state == CAM_SENSOR_INIT)
 		return;
 
