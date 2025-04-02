@@ -25,7 +25,7 @@ fw-shipped-$(CONFIG_TOUCHSCREEN_ATMEL_MXT) += mXT640U0x1410E8.fw mxt_640u_gov_co
 fw-shipped-$(CONFIG_TOUCHSCREEN_ST_FTS_V521) += st_fts_e1.ftb st_fts_e8.ftb st_fts.ftb st_fts_e5.ftb
 fw-shipped-$(CONFIG_INPUT_PRESS_NDT_F60) += ndt_fw.bin
 fw-shipped-$(CONFIG_INPUT_PRESS_NDT_M65) += ndt_fw_m65.bin
-fw-shipped-$(CONFIG_TOUCHSCREEN_NT36XXX_LOS) += novatek_nt36672_e10.fw novatek_nt36672_e10_hw01.fw \
+fw-shipped-$(CONFIG_TOUCHSCREEN_NT36XXX_MI845) += novatek_nt36672_e10.fw novatek_nt36672_e10_hw01.fw \
 						novatek_nt36672_e10_hw02.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FORCE) += synaptics_jdi_3330_d5x.fw
 fw-shipped-$(CONFIG_TOUCHSCREEN_FT5X46) += ft8716_ebbg_incell_ebbg_d5x.fw
