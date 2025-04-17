@@ -1487,6 +1487,7 @@ static int wcd_spi_component_bind(struct device *dev,
 	spi_message_add_tail(&wcd_spi->xfer2[1], &wcd_spi->msg2);
 
 	/* Pre-allocate the buffers */
+	/* FIXME */
 	wcd_spi->tx_buf = dma_zalloc_coherent(&spi->dev,
 					      WCD_SPI_RW_MAX_BUF_SIZE,
 					      &wcd_spi->tx_dma, GFP_KERNEL);
@@ -1505,6 +1506,7 @@ static int wcd_spi_component_bind(struct device *dev,
 		ret = -ENOMEM;
 		goto done;
 	}
+	/* FIXME */
 done:
 	return ret;
 }
