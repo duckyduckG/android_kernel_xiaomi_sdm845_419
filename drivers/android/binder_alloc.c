@@ -407,7 +407,6 @@ static void debug_no_space_locked(struct binder_alloc *alloc)
 }
 
 static bool debug_low_async_space_locked(struct binder_alloc *alloc)
->>>>>>> f3a32953487b (binder: Import from android13-5.10-lts branch at 76b049b)
 {
 	/*
 	 * Find the amount and size of buffers allocated by the current caller;

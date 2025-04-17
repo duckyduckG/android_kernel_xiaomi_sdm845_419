@@ -66,7 +66,6 @@
 #include <linux/syscalls.h>
 #include <linux/task_work.h>
 #include <linux/sizes.h>
-#include <linux/android_vendor.h>
 
 #include <uapi/linux/android/binder.h>
 #include <uapi/linux/android/binderfs.h>
@@ -78,7 +77,6 @@
 
 #include "binder_internal.h"
 #include "binder_trace.h"
-#include <trace/hooks/binder.h>
 
 #include "../../kernel/sched/sched.h"
 
@@ -856,16 +854,14 @@ static void binder_transaction_priority(struct binder_thread *thread,
 		.sched_policy = node->sched_policy,
 		.prio = node->min_priority,
 	};
-	bool skip = false;
 
 	if (t->set_priority_called)
 		return;
 
 	t->set_priority_called = true;
 
-	if (!inherit_rt && is_rt_policy(desired_prio.sched_policy)) {
-		desired_prio.prio = NICE_TO_PRIO(0);
-		desired_prio.sched_policy = SCHED_NORMAL;
+	if (!node->inherit_rt && is_rt_policy(desired.sched_policy)) {
+		desired.prio = NICE_TO_PRIO(0);
 		desired.sched_policy = SCHED_NORMAL;
 	}
 
