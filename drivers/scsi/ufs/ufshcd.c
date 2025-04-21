@@ -8492,12 +8492,17 @@ static int ufs_get_device_desc(struct ufs_hba *hba,
 	model_index = desc_buf[DEVICE_DESC_PARAM_PRDCT_NAME];
 
 
-	/* Enable WB only for UFS-3.0 or UFS-2.2 OR if desc len >= 0x59 */
+	/* Enable WB only for UFS-3.0 or UFS-2.2 or UFS-2.1 OR if desc len >= 0x59 */
 	if ((dev_desc->wspecversion >= 0x300) ||
 	    (dev_desc->wspecversion == 0x220) ||
+	    (dev_desc->wspecversion == 0x210) ||
 	    (dev_desc->wmanufacturerid == UFS_VENDOR_TOSHIBA &&
 	     dev_desc->wspecversion >= 0x300 &&
 	     hba->desc_size.dev_desc >= 0x59))
+	dev_info(hba->dev,
+		"%s: WB enabled — spec=0x%x, manf=0x%x, desc_size=0x%zx\n",
+		__func__, dev_desc->wspecversion, dev_desc->wmanufacturerid,
+		hba->desc_size.dev_desc);
 		hba->dev_info.d_ext_ufs_feature_sup =
 			desc_buf[DEVICE_DESC_PARAM_EXT_UFS_FEATURE_SUP]
 								<< 24 |
