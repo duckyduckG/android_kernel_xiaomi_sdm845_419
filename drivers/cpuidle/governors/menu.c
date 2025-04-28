@@ -513,7 +513,7 @@ static int menu_enable_device(struct cpuidle_driver *drv,
 
 static struct cpuidle_governor menu_governor = {
 	.name =		"menu",
-	.rating =	19,
+	.rating =	20,
 	.enable =	menu_enable_device,
 	.select =	menu_select,
 	.reflect =	menu_reflect,
