@@ -1482,7 +1482,7 @@ exit:
 
 	cluster_unprepare(cpu->parent, cpumask, idx, true, end_time, success);
 	cpu_unprepare(cpu, idx, true);
-	dev->last_residency_ns = ktime_us_delta(ktime_get(), start);
+	dev->last_residency_ns = ktime_to_ns(ktime_sub(ktime_get(), start));
 	update_history(dev, idx);
 	trace_cpu_idle_exit(idx, success);
 	if (lpm_prediction && cpu->lpm_prediction) {
