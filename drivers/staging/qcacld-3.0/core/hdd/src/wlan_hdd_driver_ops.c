@@ -56,7 +56,7 @@
 #define DISABLE_KRAIT_IDLE_PS_VAL      1
 
 #define MAX_RETRIES 5
-#define RETRY_DELAY_MS 100
+#define RETRY_DELAY_MS 50
 
 #define SSR_MAX_FAIL_CNT 3
 static uint8_t re_init_fail_cnt, probe_fail_cnt;
@@ -1268,13 +1268,16 @@ int wlan_hdd_bus_suspend_noirq(void)
 		msleep(RETRY_DELAY_MS);
 		continue;
 	}
-	break;
+	if (errno)
+		goto resume_hif_noirq;
    }
 
 	pending_events = wma_critical_events_in_flight();
 	if (pending_events) {
 		hdd_err("Ignoring %d critical event(s) in flight; try again",
 			pending_events);
+		errno = -EAGAIN;
+		goto resume_hif_noirq;
 	}
 
 	hdd_ctx->suspend_resume_stats.suspends++;
