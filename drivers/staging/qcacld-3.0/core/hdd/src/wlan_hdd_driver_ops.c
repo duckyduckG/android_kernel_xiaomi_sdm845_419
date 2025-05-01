@@ -55,6 +55,9 @@
 
 #define DISABLE_KRAIT_IDLE_PS_VAL      1
 
+#define MAX_RETRIES 5
+#define RETRY_DELAY_MS 100
+
 #define SSR_MAX_FAIL_CNT 3
 static uint8_t re_init_fail_cnt, probe_fail_cnt;
 
@@ -1227,6 +1230,7 @@ int wlan_hdd_bus_suspend_noirq(void)
 	void *hif_ctx;
 	int errno;
 	uint32_t pending_events;
+	int retry;
 
 	hdd_debug("start bus_suspend_noirq");
 
@@ -1256,22 +1260,21 @@ int wlan_hdd_bus_suspend_noirq(void)
 	errno = hif_bus_suspend_noirq(hif_ctx);
 	if (errno)
 		goto done;
-
+		
+  for (retry = 0; retry < MAX_RETRIES; retry++) {
 	errno = ucfg_pmo_psoc_is_target_wake_up_received(hdd_ctx->psoc);
 	if (errno == -EAGAIN) {
 		hdd_err("Firmware attempting wakeup, try again");
-		wlan_hdd_inc_suspend_stats(hdd_ctx,
-					   SUSPEND_FAIL_INITIAL_WAKEUP);
+		msleep(RETRY_DELAY_MS);
+		continue;
 	}
-	if (errno)
-		goto resume_hif_noirq;
+	break;
+   }
 
 	pending_events = wma_critical_events_in_flight();
 	if (pending_events) {
-		hdd_err("%d critical event(s) in flight; try again",
+		hdd_err("Ignoring %d critical event(s) in flight; try again",
 			pending_events);
-		errno = -EAGAIN;
-		goto resume_hif_noirq;
 	}
 
 	hdd_ctx->suspend_resume_stats.suspends++;
