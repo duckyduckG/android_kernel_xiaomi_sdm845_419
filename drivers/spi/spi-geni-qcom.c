@@ -1936,7 +1936,7 @@ static int spi_geni_suspend(struct device *dev)
 static const struct dev_pm_ops spi_geni_pm_ops = {
 	SET_RUNTIME_PM_OPS(spi_geni_runtime_suspend,
 					spi_geni_runtime_resume, NULL)
-	SET_SYSTEM_SLEEP_PM_OPS(spi_geni_suspend, spi_geni_resume)
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(spi_geni_suspend, spi_geni_resume)
 };
 
 static const struct of_device_id spi_geni_dt_match[] = {
