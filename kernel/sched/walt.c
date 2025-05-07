@@ -436,10 +436,10 @@ void clear_walt_request(int cpu)
 
 		raw_spin_lock_irqsave(&rq->lock, flags);
 		if (rq->push_task) {
-			clear_reserved(rq->push_cpu);
 			push_task = rq->push_task;
 			rq->push_task = NULL;
 		}
+		clear_reserved(rq->push_cpu);
 		rq->active_balance = 0;
 		raw_spin_unlock_irqrestore(&rq->lock, flags);
 		if (push_task)
@@ -4152,12 +4152,12 @@ int walt_proc_user_hint_handler(struct ctl_table *table,
 
 	mutex_lock(&mutex);
 
-	sched_user_hint_reset_time = jiffies + HZ;
 	old_value = sysctl_sched_user_hint;
 	ret = proc_dointvec_minmax(table, write, buffer, lenp, ppos);
 	if (ret || !write || (old_value == sysctl_sched_user_hint))
 		goto unlock;
 
+	sched_user_hint_reset_time = jiffies + HZ;
 	irq_work_queue(&walt_migration_irq_work);
 
 unlock:
