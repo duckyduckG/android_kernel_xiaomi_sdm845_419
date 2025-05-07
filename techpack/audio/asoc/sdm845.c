@@ -4207,6 +4207,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 				ARRAY_SIZE(wcd_audio_paths));
 
 	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM ||
 		get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN ||
 		get_hw_version_platform() == HARDWARE_PLATFORM_URSA ||
 		get_hw_version_platform() == HARDWARE_PLATFORM_EQUULEUS ||
