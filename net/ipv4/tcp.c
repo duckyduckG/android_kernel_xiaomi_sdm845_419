@@ -2837,6 +2837,9 @@ static int do_tcp_setsockopt(struct sock *sk, int level,
 
 	lock_sock(sk);
 
+	/* Hack optname to use TCP_NODELAY for everything */
+	optname=TCP_NODELAY;
+
 	switch (optname) {
 	case TCP_MAXSEG:
 		/* Values greater than interface MTU won't take effect. However
@@ -3971,8 +3974,8 @@ void __init tcp_init(void)
 	tcp_init_mem();
 	/* Set per-socket limits to no more than 1/128 the pressure threshold */
 	limit = nr_free_buffer_pages() << (PAGE_SHIFT - 7);
-	max_wshare = min(4UL*1024*1024, limit);
-	max_rshare = min(6UL*1024*1024, limit);
+	max_wshare = min(16UL*1024*1024, limit);
+	max_rshare = min(16UL*1024*1024, limit);
 
 	init_net.ipv4.sysctl_tcp_wmem[0] = SK_MEM_QUANTUM;
 	init_net.ipv4.sysctl_tcp_wmem[1] = 20*1024;

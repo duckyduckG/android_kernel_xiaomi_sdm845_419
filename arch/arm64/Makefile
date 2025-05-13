@@ -51,6 +51,20 @@ endif
 
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 KBUILD_CFLAGS	+= $(lseinstr) $(brokengasinst) $(compat_vdso)
+
+ifeq ($(CONFIG_MACH_XIAOMI_SDM845), y)
+ifeq ($(cc-name),clang)
+KBUILD_CFLAGS   += -mcpu=cortex-a75
+KBUILD_AFLAGS   += -mcpu=cortex-a75
+ifeq ($(CONFIG_LD_IS_LLD), y)
+KBUILD_LDFLAGS  += -mllvm -mcpu=cortex-a75
+endif
+else
+KBUILD_CFLAGS   += -mcpu=cortex-a75.cortex-a55
+KBUILD_AFLAGS   += -mcpu=cortex-a75.cortex-a55
+endif
+endif
+
 KBUILD_CFLAGS	+= -fno-asynchronous-unwind-tables
 KBUILD_CFLAGS	+= $(call cc-disable-warning, psabi)
 KBUILD_AFLAGS	+= $(lseinstr) $(brokengasinst) $(compat_vdso)
