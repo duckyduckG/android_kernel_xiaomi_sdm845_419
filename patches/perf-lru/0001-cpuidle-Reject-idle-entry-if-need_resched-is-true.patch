@@ -1,0 +1,31 @@
+From a4ffe7029b38e0dce46856ab4e1cae6c8ab4cc95 Mon Sep 17 00:00:00 2001
+From: Sultan Alsawaf <sultan@kerneltoast.com>
+Date: Fri, 16 May 2025 17:23:07 +0500
+Subject: [PATCH] cpuidle: Reject idle entry if need_resched() is true There's
+ no reason to enter idle at this point in __CPU_PM_CPU_IDLE_ENTER() if the CPU
+ needs to reschedule. Instead of fruitlessly entering the architecture's idle
+ routine, reject the idle entry attempt with an error as an optimization.
+
+Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+---
+ include/linux/cpuidle.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/include/linux/cpuidle.h b/include/linux/cpuidle.h
+index 188201a3e892..5337a766b502 100644
+--- a/include/linux/cpuidle.h
++++ b/include/linux/cpuidle.h
+@@ -270,7 +270,9 @@ static inline int cpuidle_register_governor(struct cpuidle_governor *gov)
+ ({									\
+ 	int __ret = 0;							\
+ 									\
+-	if (!idx) {							\
++	if (need_resched()) {						\
++		__ret = -1;						\
++	} else if (!idx) {						\
+ 		cpu_do_idle();						\
+ 		return idx;						\
+ 	}								\
+-- 
+2.49.0
+

@@ -1,0 +1,74 @@
+From cedbb8785eb383bb70598c309ba9d93c9bba8616 Mon Sep 17 00:00:00 2001
+From: Julien Thierry <julien.thierry@arm.com>
+Date: Thu, 31 Jan 2019 14:58:47 +0000
+Subject: [PATCH] arm64: Move cpu_do_idle from ASM to C
+
+Original commit: "arm64: Unmask PMR before going idle"
+
+Since the logic of cpu_do_idle is becoming a bit more complex than just
+two instructions, lets turn it from ASM to C.
+
+Change-Id: I6376dcafd9a7c6ea10c1bf4a0ebe48970d57a453
+Signed-off-by: Julien Thierry <julien.thierry@arm.com>
+Suggested-by: Daniel Thompson <daniel.thompson@linaro.org>
+Reviewed-by: Catalin Marinas <catalin.marinas@arm.com>
+Reviewed-by: Marc Zyngier <marc.zyngier@arm.com>
+Cc: Will Deacon <will.deacon@arm.com>
+Signed-off-by: Catalin Marinas <catalin.marinas@arm.com>
+---
+ arch/arm64/kernel/process.c | 16 ++++++++++++++++
+ arch/arm64/mm/proc.S        | 11 -----------
+ 2 files changed, 16 insertions(+), 11 deletions(-)
+
+diff --git a/arch/arm64/kernel/process.c b/arch/arm64/kernel/process.c
+index d8e9ae4c7c06..98de4136cab6 100644
+--- a/arch/arm64/kernel/process.c
++++ b/arch/arm64/kernel/process.c
+@@ -77,6 +77,22 @@ EXPORT_SYMBOL_GPL(pm_power_off);
+ void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+ EXPORT_SYMBOL_GPL(arm_pm_restart);
+ 
++static void __cpu_do_idle(void)
++{
++	dsb(sy);
++	wfi();
++}
++
++/*
++ *	cpu_do_idle()
++ *
++ *	Idle the processor (wait for interrupt).
++ */
++void cpu_do_idle(void)
++{
++	__cpu_do_idle();
++}
++
+ /*
+  * This is our default idle handler.
+  */
+diff --git a/arch/arm64/mm/proc.S b/arch/arm64/mm/proc.S
+index d40c37bf27ae..b9c26c021f53 100644
+--- a/arch/arm64/mm/proc.S
++++ b/arch/arm64/mm/proc.S
+@@ -101,17 +101,6 @@ ENTRY(cpu_soft_restart)
+ 	ret	x19
+ ENDPROC(cpu_soft_restart)
+ 
+-/*
+- *	cpu_do_idle()
+- *
+- *	Idle the processor (wait for interrupt).
+- */
+-ENTRY(cpu_do_idle)
+-	dsb	sy				// WFI may enter a low-power mode
+-	wfi
+-	ret
+-ENDPROC(cpu_do_idle)
+-
+ #ifdef CONFIG_CPU_PM
+ /**
+  * cpu_do_suspend - save CPU registers context
+-- 
+2.49.0
+

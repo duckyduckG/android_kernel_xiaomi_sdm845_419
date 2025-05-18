@@ -1,0 +1,123 @@
+From 42c18ddd5647f48c09c2780f656045a599645249 Mon Sep 17 00:00:00 2001
+From: Julian Liu <wlootlxt123@gmail.com>
+Date: Fri, 21 May 2021 12:48:16 +0200
+Subject: [PATCH] qcacld-3.0: Free a bunch of pkts at once
+
+It is too bad to do a tight loop every adding pkt. When the hotspot is turned on, I notice that the
+htt_htc_misc_pkt_list_trim() function consumes at least 5% of CPU time. By caching the head of pkt
+queue and freeing multiple pkts at once to reduce CPU consumption.
+
+Signed-off-by: Julian Liu <wlootlxt123@gmail.com>
+Signed-off-by: Alex Winkowski <dereference23@outlook.com>
+Signed-off-by: Forenche <prahul2003@gmail.com>
+Signed-off-by: Tashfin Shakeer Rhythm <tashfinshakeerrhythm@gmail.com>
+---
+ drivers/staging/qcacld-3.0/core/dp/htt/htt.c  | 45 +++++++++----------
+ .../qcacld-3.0/core/dp/htt/htt_internal.h     |  2 +-
+ .../qcacld-3.0/core/dp/htt/htt_types.h        |  3 ++
+ 3 files changed, 25 insertions(+), 25 deletions(-)
+
+diff --git a/drivers/staging/qcacld-3.0/core/dp/htt/htt.c b/drivers/staging/qcacld-3.0/core/dp/htt/htt.c
+index 14e0174e679c..66321e5dbbc9 100644
+--- a/drivers/staging/qcacld-3.0/core/dp/htt/htt.c
++++ b/drivers/staging/qcacld-3.0/core/dp/htt/htt.c
+@@ -114,32 +114,28 @@ void htt_htc_pkt_pool_free(struct htt_pdev_t *pdev)
+ 
+ #ifdef ATH_11AC_TXCOMPACT
+ 
+-void
+-htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev, int level)
++void htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev)
+ {
+-	struct htt_htc_pkt_union *pkt, *next, *prev = NULL;
+-	int i = 0;
++	struct htt_htc_pkt_union *pkt, *next;
+ 	qdf_nbuf_t netbuf;
+ 
+-	HTT_TX_MUTEX_ACQUIRE(&pdev->htt_tx_mutex);
+-	pkt = pdev->htt_htc_pkt_misclist;
++	// skip if first come
++	if(!pdev->last_misc_pkt->u.next)
++		goto out;
++
++	pkt = pdev->last_misc_pkt->u.next;
++	pdev->last_misc_pkt->u.next = NULL;
+ 	while (pkt) {
+ 		next = pkt->u.next;
+-		/* trim the out grown list*/
+-		if (++i > level) {
+-			netbuf =
+-				(qdf_nbuf_t)(pkt->u.pkt.htc_pkt.pNetBufContext);
+-			qdf_nbuf_unmap(pdev->osdev, netbuf, QDF_DMA_TO_DEVICE);
+-			qdf_nbuf_free(netbuf);
+-			qdf_mem_free(pkt);
+-			pkt = NULL;
+-			if (prev)
+-				prev->u.next = NULL;
+-		}
+-		prev = pkt;
++		netbuf = (qdf_nbuf_t) (pkt->u.pkt.htc_pkt.pNetBufContext);
++		qdf_nbuf_unmap(pdev->osdev, netbuf, QDF_DMA_TO_DEVICE);
++		qdf_nbuf_free(netbuf);
++		qdf_mem_free(pkt);
+ 		pkt = next;
+ 	}
+-	HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
++out:
++	pdev->last_misc_pkt = pdev->htt_htc_pkt_misclist;
++	pdev->last_misc_num = 1;
+ }
+ 
+ void htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt)
+@@ -153,15 +149,16 @@ void htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt)
+ 	if (pdev->htt_htc_pkt_misclist) {
+ 		u_pkt->u.next = pdev->htt_htc_pkt_misclist;
+ 		pdev->htt_htc_pkt_misclist = u_pkt;
++		pdev->last_misc_num++;
+ 	} else {
+ 		pdev->htt_htc_pkt_misclist = u_pkt;
++		pdev->last_misc_pkt = u_pkt;
++		pdev->last_misc_num = 1;
+ 	}
+-	HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
+ 
+-	/* only ce pipe size + tx_queue_depth could possibly be in use
+-	 * free older packets in the msiclist
+-	 */
+-	htt_htc_misc_pkt_list_trim(pdev, misclist_trim_level);
++	if (pdev->last_misc_num > misclist_trim_level)
++		htt_htc_misc_pkt_list_trim(pdev);
++	HTT_TX_MUTEX_RELEASE(&pdev->htt_tx_mutex);
+ }
+ 
+ void htt_htc_misc_pkt_pool_free(struct htt_pdev_t *pdev)
+diff --git a/drivers/staging/qcacld-3.0/core/dp/htt/htt_internal.h b/drivers/staging/qcacld-3.0/core/dp/htt/htt_internal.h
+index 17bd2cbc9c6d..a4d47cf74ad7 100644
+--- a/drivers/staging/qcacld-3.0/core/dp/htt/htt_internal.h
++++ b/drivers/staging/qcacld-3.0/core/dp/htt/htt_internal.h
+@@ -608,7 +608,7 @@ void htt_htc_pkt_free(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt);
+ void htt_htc_pkt_pool_free(struct htt_pdev_t *pdev);
+ 
+ #ifdef ATH_11AC_TXCOMPACT
+-void htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev, int level);
++void htt_htc_misc_pkt_list_trim(struct htt_pdev_t *pdev);
+ 
+ void
+ htt_htc_misc_pkt_list_add(struct htt_pdev_t *pdev, struct htt_htc_pkt *pkt);
+diff --git a/drivers/staging/qcacld-3.0/core/dp/htt/htt_types.h b/drivers/staging/qcacld-3.0/core/dp/htt/htt_types.h
+index 0ad01dec88b7..338cb05f0fd6 100644
+--- a/drivers/staging/qcacld-3.0/core/dp/htt/htt_types.h
++++ b/drivers/staging/qcacld-3.0/core/dp/htt/htt_types.h
+@@ -452,6 +452,9 @@ struct htt_pdev_t {
+ 
+ 	/* Flag to indicate whether new htt format is supported */
+ 	bool new_htt_format_enabled;
++
++	struct htt_htc_pkt_union *last_misc_pkt;
++	int last_misc_num;
+ };
+ 
+ #define HTT_EPID_GET(_htt_pdev_hdl)  \
+-- 
+2.49.0
+

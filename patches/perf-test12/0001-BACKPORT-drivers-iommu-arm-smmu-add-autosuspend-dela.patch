@@ -1,0 +1,53 @@
+From 6d7671a181072613c75e67b4e39fb4650f76a319 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Mon, 12 May 2025 11:26:19 +0500
+Subject: [PATCH] BACKPORT: drivers/iommu/arm-smmu: add autosuspend delay *
+ from mainline kernel, dont know why i am adding it, in testing faced weird
+ issues after cpu went to idle from heavy load
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/iommu/arm-smmu.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/drivers/iommu/arm-smmu.c b/drivers/iommu/arm-smmu.c
+index 51fa7d753ab4..bc5d55822da5 100644
+--- a/drivers/iommu/arm-smmu.c
++++ b/drivers/iommu/arm-smmu.c
+@@ -74,6 +74,10 @@
+ #include <linux/uaccess.h>
+ #include <linux/bitfield.h>
+ 
++#if 1
++#include <linux/pm_runtime.h>
++#endif
++
+ /*
+  * Apparently, some Qualcomm arm64 platforms which appear to expose their SMMU
+  * global register space are still, in fact, using a hypervisor to mediate it
+@@ -3558,6 +3562,22 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
+ 	/* Looks ok, so add the device to the domain */
+ 	ret = arm_smmu_domain_add_master(smmu_domain, fwspec);
+ 
++#if 1
++	/*
++	 * Setup an autosuspend delay to avoid bouncing runpm state.
++	 * Otherwise, if a driver for a suspended consumer device
++	 * unmaps buffers, it will runpm resume/suspend for each one.
++	 *
++	 * For example, when used by a GPU device, when an application
++	 * or game exits, it can trigger unmapping 100s or 1000s of
++	 * buffers.  With a runpm cycle for each buffer, that adds up
++	 * to 5-10sec worth of reprogramming the context bank, while
++	 * the system appears to be locked up to the user.
++	 */
++	pm_runtime_set_autosuspend_delay(smmu->dev, 20);
++	pm_runtime_use_autosuspend(smmu->dev);
++#endif
++
+ out_power_off:
+ 	/*
+ 	 * Keep an additional vote for non-atomic power until domain is
+-- 
+2.49.0
+

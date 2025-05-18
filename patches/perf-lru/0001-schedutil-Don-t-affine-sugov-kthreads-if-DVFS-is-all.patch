@@ -1,0 +1,31 @@
+From f47379123d407f1a698317fe719e7bea23c42eec Mon Sep 17 00:00:00 2001
+From: Sultan Alsawaf <sultan@kerneltoast.com>
+Date: Fri, 16 May 2025 09:41:23 +0500
+Subject: [PATCH] schedutil: Don't affine sugov kthreads if DVFS is allowed
+ from any CPU Restricting sugov kthreads to their respective CPUFreq policy's
+ CPUs slows down schedutil's ability to switch frequencies. When DVFS is
+ allowed from any CPU, allow respective sugov kthreads to run on any CPU for
+ better performance.
+
+Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+---
+ kernel/sched/cpufreq_schedutil.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/kernel/sched/cpufreq_schedutil.c b/kernel/sched/cpufreq_schedutil.c
+index 725909c39d71..399fa744cad3 100644
+--- a/kernel/sched/cpufreq_schedutil.c
++++ b/kernel/sched/cpufreq_schedutil.c
+@@ -1107,7 +1107,8 @@ static int sugov_kthread_create(struct sugov_policy *sg_policy)
+ 	}
+ 
+ 	sg_policy->thread = thread;
+-	kthread_bind_mask(thread, policy->related_cpus);
++	if (!policy->dvfs_possible_from_any_cpu)
++		kthread_bind_mask(thread, policy->related_cpus);
+ 	init_irq_work(&sg_policy->irq_work, sugov_irq_work);
+ 	mutex_init(&sg_policy->work_lock);
+ 
+-- 
+2.49.0
+

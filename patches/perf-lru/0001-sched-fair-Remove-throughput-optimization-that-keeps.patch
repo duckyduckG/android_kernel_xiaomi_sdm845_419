@@ -1,0 +1,44 @@
+From 59f33653a3d86d9927a20a1f3c12ccd02b0a5ed7 Mon Sep 17 00:00:00 2001
+From: Sultan Alsawaf <sultan@kerneltoast.com>
+Date: Fri, 16 May 2025 09:29:49 +0500
+Subject: [PATCH] sched/fair: Remove throughput optimization that keeps tasks
+ on big CPUs When the load balancer looks for the busiest group to detach
+ tasks from, it deliberately ignores higher-capacity groups that aren't
+ egregiously imbalanced. This is done in an attempt to improve throughput,
+ while resulting in a significant hit to energy efficiency: on Tensor G4
+ (Pixel 9 Pro), removing this optimization reduces energy usage by around 7%
+ (400 mW -> 370 mW) for a light gaming scenario.
+
+Since this optimization doesn't provide any notable throughput improvement
+(hackbench actually performs slightly better without it), remove it to
+improve energy efficiency.
+
+Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+---
+ kernel/sched/fair.c | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/kernel/sched/fair.c b/kernel/sched/fair.c
+index 2b37aaedaf68..dfc8097622d1 100644
+--- a/kernel/sched/fair.c
++++ b/kernel/sched/fair.c
+@@ -9879,16 +9879,6 @@ static bool update_sd_pick_busiest(struct lb_env *env,
+ 	if (!(env->sd->flags & SD_ASYM_CPUCAPACITY))
+ 		goto asym_packing;
+ 
+-	/*
+-	 * Candidate sg has no more than one task per CPU and
+-	 * has higher per-CPU capacity. Migrating tasks to less
+-	 * capable CPUs may harm throughput. Maximize throughput,
+-	 * power/energy consequences are not considered.
+-	 */
+-	if (sgs->sum_nr_running <= sgs->group_weight &&
+-	    group_smaller_min_cpu_capacity(sds->local, sg))
+-		return false;
+-
+ 	/*
+ 	 * Candidate sg doesn't face any severe imbalance issues so
+ 	 * don't disturb unless the groups are of similar capacity
+-- 
+2.49.0
+

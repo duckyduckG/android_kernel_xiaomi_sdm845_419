@@ -1,0 +1,50 @@
+From 7d358a3b51041e454ef9e1e8cdff73df19162281 Mon Sep 17 00:00:00 2001
+From: Sultan Alsawaf <sultan@kerneltoast.com>
+Date: Sat, 4 May 2019 21:29:14 -0700
+Subject: [PATCH] msm: kgsl: Relax CPU latency requirements to save power
+
+Relaxing the CPU latency requirement by about 500 us won't significantly
+hurt graphics performance. On the flip side, most SoCs have many idle
+levels just below 1000 us in latency, with deeper idle levels having
+latencies in excess of 2000 us. Changing the latency requirement to
+1000 us allows most SoCs to use their deepest sub-1000-us idle state
+while the GPU is active.
+
+Additionally, since the lpm driver has been updated to allow power
+levels with latencies equal to target latencies, change the wakeup
+latency from 101 to 100 for clarity.
+
+Signed-off-by: Sultan Alsawaf <sultan@kerneltoast.com>
+Signed-off-by: Danny Lin <danny@kdrag0n.dev>
+---
+ drivers/gpu/msm/adreno.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/drivers/gpu/msm/adreno.c b/drivers/gpu/msm/adreno.c
+index 16a74428e5a3..bbf1c9298b16 100644
+--- a/drivers/gpu/msm/adreno.c
++++ b/drivers/gpu/msm/adreno.c
+@@ -1248,17 +1248,17 @@ static int adreno_of_get_power(struct adreno_device *adreno_dev,
+ 	/* get pm-qos-active-latency, set it to default if not found */
+ 	if (of_property_read_u32(node, "qcom,pm-qos-active-latency",
+ 		&device->pwrctrl.pm_qos_active_latency))
+-		device->pwrctrl.pm_qos_active_latency = 501;
++		device->pwrctrl.pm_qos_active_latency = 1000;
+ 
+ 	/* get pm-qos-cpu-mask-latency, set it to default if not found */
+ 	if (of_property_read_u32(node, "qcom,l2pc-cpu-mask-latency",
+ 		&device->pwrctrl.pm_qos_cpu_mask_latency))
+-		device->pwrctrl.pm_qos_cpu_mask_latency = 501;
++		device->pwrctrl.pm_qos_cpu_mask_latency = 1000;
+ 
+ 	/* get pm-qos-wakeup-latency, set it to default if not found */
+ 	if (of_property_read_u32(node, "qcom,pm-qos-wakeup-latency",
+ 		&device->pwrctrl.pm_qos_wakeup_latency))
+-		device->pwrctrl.pm_qos_wakeup_latency = 101;
++		device->pwrctrl.pm_qos_wakeup_latency = 100;
+ 
+ 	if (of_property_read_u32(node, "qcom,idle-timeout", &timeout))
+ 		timeout = 64;
+-- 
+2.49.0
+

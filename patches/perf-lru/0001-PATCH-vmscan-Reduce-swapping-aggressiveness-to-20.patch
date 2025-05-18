@@ -1,0 +1,130 @@
+From 15ac66ce881ce1e3e86af41406f5b0410ae4bc8d Mon Sep 17 00:00:00 2001
+From: Panchajanya1999 <kernel@panchajanya.dev>
+Date: Fri, 23 Feb 2024 19:32:31 +0100
+Subject: [PATCH] [PATCH] vmscan: Reduce swapping aggressiveness to 20
+
+Since Android 12, memory management on Androids has been affected significantly, especially
+on devices with <=4GB RAMs.
+
+Multitasking on default settings was a horror and introducing custom Low
+Memory Killers like SLMK did no much improvements.
+
+Introduction of MGLRU seems to have relaxed this situation and now apps
+don't get killed randomly. Instead, they get swapped to zRAM aggressively.
+
+In such situation, reducing swappiness parameter seems to have helped alot
+in multitasking and it seems fluid now.
+
+Test: on normal usage, keep 5-6 apps and use them in repeat.
+Outcome: none of them gets killed or swapped on in a short epoch, while 60%
+still stays in memory after 7 hours idling.
+
+Signed-off-by: Panchajanya1999 <kernel@panchajanya.dev>
+Signed-off-by: warudooooo <warudo.2k23@gmail.com>
+---
+ kernel/sysctl.c | 22 +++++++++++-----------
+ mm/vmscan.c     |  2 +-
+ 2 files changed, 12 insertions(+), 12 deletions(-)
+
+diff --git a/kernel/sysctl.c b/kernel/sysctl.c
+index 93e304893486..5b44a04cb926 100644
+--- a/kernel/sysctl.c
++++ b/kernel/sysctl.c
+@@ -1690,7 +1690,7 @@ static struct ctl_table vm_table[] = {
+ 		.proc_handler	= overcommit_kbytes_handler,
+ 	},
+ 	{
+-		.procname	= "page-cluster", 
++		.procname	= "page-cluster",
+ 		.data		= &page_cluster,
+ 		.maxlen		= sizeof(int),
+ 		.mode		= 0644,
+@@ -1758,7 +1758,7 @@ static struct ctl_table vm_table[] = {
+ 		.procname	= "swappiness",
+ 		.data		= &vm_swappiness,
+ 		.maxlen		= sizeof(vm_swappiness),
+-		.mode		= 0644,
++		.mode		= 0444,
+ 		.proc_handler	= proc_dointvec_minmax,
+ 		.extra1		= &zero,
+ 		.extra2		= &one_hundred,
+@@ -2238,7 +2238,7 @@ static struct ctl_table fs_table[] = {
+ 		.mode		= 0555,
+ 		.child		= inotify_table,
+ 	},
+-#endif	
++#endif
+ #ifdef CONFIG_EPOLL
+ 	{
+ 		.procname	= "epoll",
+@@ -2719,12 +2719,12 @@ static int __do_proc_dointvec(void *tbl_data, struct ctl_table *table,
+ 	int *i, vleft, first = 1, err = 0;
+ 	size_t left;
+ 	char *kbuf = NULL, *p;
+-	
++
+ 	if (!tbl_data || !table->maxlen || !*lenp || (*ppos && !write)) {
+ 		*lenp = 0;
+ 		return 0;
+ 	}
+-	
++
+ 	i = (int *) tbl_data;
+ 	vleft = table->maxlen / sizeof(*i);
+ 	left = *lenp;
+@@ -2950,7 +2950,7 @@ static int do_proc_douintvec(struct ctl_table *table, int write,
+  * @ppos: file position
+  *
+  * Reads/writes up to table->maxlen/sizeof(unsigned int) integer
+- * values from/to the user buffer, treated as an ASCII string. 
++ * values from/to the user buffer, treated as an ASCII string.
+  *
+  * Returns 0 on success.
+  */
+@@ -3465,7 +3465,7 @@ static int do_proc_dointvec_ms_jiffies_conv(bool *negp, unsigned long *lvalp,
+  * @ppos: file position
+  *
+  * Reads/writes up to table->maxlen/sizeof(unsigned int) integer
+- * values from/to the user buffer, treated as an ASCII string. 
++ * values from/to the user buffer, treated as an ASCII string.
+  * The values read are assumed to be in seconds, and are converted into
+  * jiffies.
+  *
+@@ -3487,8 +3487,8 @@ int proc_dointvec_jiffies(struct ctl_table *table, int write,
+  * @ppos: pointer to the file position
+  *
+  * Reads/writes up to table->maxlen/sizeof(unsigned int) integer
+- * values from/to the user buffer, treated as an ASCII string. 
+- * The values read are assumed to be in 1/USER_HZ seconds, and 
++ * values from/to the user buffer, treated as an ASCII string.
++ * The values read are assumed to be in 1/USER_HZ seconds, and
+  * are converted into jiffies.
+  *
+  * Returns 0 on success.
+@@ -3510,8 +3510,8 @@ int proc_dointvec_userhz_jiffies(struct ctl_table *table, int write,
+  * @ppos: the current position in the file
+  *
+  * Reads/writes up to table->maxlen/sizeof(unsigned int) integer
+- * values from/to the user buffer, treated as an ASCII string. 
+- * The values read are assumed to be in 1/1000 seconds, and 
++ * values from/to the user buffer, treated as an ASCII string.
++ * The values read are assumed to be in 1/1000 seconds, and
+  * are converted into jiffies.
+  *
+  * Returns 0 on success.
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 80ae63835908..1ff1beeb7e0d 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -187,7 +187,7 @@ int kswapd_threads_current = DEF_KSWAPD_THREADS_PER_NODE;
+ /*
+  * From 0 .. 100.  Higher means more swappy.
+  */
+-int vm_swappiness = 60;
++int vm_swappiness = 20;
+ /*
+  * The total number of pages which are beyond the high watermark within all
+  * zones.
+-- 
+2.49.0
+

@@ -1,0 +1,26 @@
+From 2035c0c0e2cb2d3795fbdd2885602fe3b5adc931 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Tue, 13 May 2025 05:03:09 +0500
+Subject: [PATCH] drivers/thermal/cpu_cooling: fix stuck cpu freq
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/thermal/cpu_cooling.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/thermal/cpu_cooling.c b/drivers/thermal/cpu_cooling.c
+index 2fa556b346f7..00bed29ad56f 100644
+--- a/drivers/thermal/cpu_cooling.c
++++ b/drivers/thermal/cpu_cooling.c
+@@ -735,7 +735,7 @@ __cpufreq_cooling_register(struct device_node *np,
+ 	list_add(&cpufreq_cdev->node, &cpufreq_cdev_list);
+ 	mutex_unlock(&cooling_list_lock);
+ 
+-	if (first)
++	if (first && !cpufreq_cdev->plat_ops)
+ 		cpufreq_register_notifier(&thermal_cpufreq_notifier_block,
+ 					  CPUFREQ_POLICY_NOTIFIER);
+ 
+-- 
+2.49.0
+

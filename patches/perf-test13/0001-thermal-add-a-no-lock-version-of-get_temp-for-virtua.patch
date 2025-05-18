@@ -1,0 +1,159 @@
+From 195d2ae97263fcbc7910ce343fbb8936ee1dc52f Mon Sep 17 00:00:00 2001
+From: Yaroslav Furman <yaro330@gmail.com>
+Date: Thu, 10 Dec 2020 16:29:25 +0300
+Subject: [PATCH] thermal: add a no-lock version of get_temp for virtual
+ sensors
+
+Due to some odd code choices it otherwise ends up calling
+thermal_zone_get_temp from itself and intern mutex locking
+twice. Fix that by using a no-lock version.
+
+[    1.623945] ============================================
+[    1.623948] WARNING: possible recursive locking detected
+[    1.623952] 4.14.207-F1xy-Q-surya/6691a4afad #137 Tainted: G S
+[    1.623954] --------------------------------------------
+[    1.623957] swapper/0/1 is trying to acquire lock:
+[    1.623959] (&tz->lock){+.+.}, at: [<        (ptrval)>] thermal_zone_get_temp+0x44/0x8c
+[    1.623976] \x0abut task is already holding lock:
+[    1.623979] (&tz->lock){+.+.}, at: [<        (ptrval)>] thermal_zone_get_temp+0x44/0x8c
+[    1.623984] \x0aother info that might help us debug this:
+[    1.623987] Possible unsafe locking scenario:\x0a
+[    1.623990] CPU0
+[    1.623992] ----
+[    1.623994] lock(&tz->lock);
+[    1.623998] lock(&tz->lock);
+[    1.624001] \x0a *** DEADLOCK ***\x0a
+[    1.624004] May be due to missing lock nesting notation\x0a
+[    1.624007] 2 locks held by swapper/0/1:
+[    1.624009] #0:  (&dev->mutex){....}, at: [<        (ptrval)>] __driver_attach+0xbc/0x108
+[    1.624018] #1:  (&tz->lock){+.+.}, at: [<        (ptrval)>] thermal_zone_get_temp+0x44/0x8c
+[    1.624024] \x0astack backtrace:
+[    1.624027] CPU: 6 PID: 1 Comm: swapper/0 Tainted: G S              4.14.207-F1xy-Q-surya/6691a4afad #137
+[    1.624030] Hardware name: Qualcomm Technologies, Inc. SDMMAGPIE PM6150 IDP (DT)
+[    1.624033] Call trace:
+[    1.624038] dump_backtrace+0x0/0x1c8
+[    1.624041] show_stack+0x14/0x1c
+[    1.624046] dump_stack+0xdc/0x12c
+[    1.624051] __lock_acquire+0x6d8/0x1cec
+[    1.624054] lock_acquire+0xac/0xd4
+[    1.624058] __mutex_lock_common+0xec/0x102c
+[    1.624060] mutex_lock_nested+0x24/0x2c
+[    1.624063] thermal_zone_get_temp+0x44/0x8c
+[    1.624066] virt_sensor_read_temp+0xa0/0x174
+[    1.624069] of_thermal_get_temp+0x30/0x6c
+[    1.624072] thermal_zone_get_temp+0x58/0x8c
+[    1.624075] thermal_zone_device_update+0x78/0x130
+[    1.624078] of_thermal_set_mode+0x68/0x7c
+[    1.624081] devm_thermal_of_virtual_sensor_register+0x264/0x2c4
+[    1.624085] qti_virtual_sensor_register+0x3c/0x64
+[    1.624088] tsens_tm_probe+0x3d0/0x4c4
+[    1.624091] platform_drv_probe+0x64/0xb8
+[    1.624094] driver_probe_device+0x418/0x450
+[    1.624097] __driver_attach+0xd0/0x108
+[    1.624100] bus_for_each_dev+0x88/0xd0
+[    1.624103] driver_attach+0x20/0x28
+[    1.624105] bus_add_driver+0x11c/0x1d8
+[    1.624108] driver_register+0xa4/0xf0
+[    1.624111] __platform_driver_register+0x40/0x48
+[    1.624117] tsens_tm_init_driver+0x18/0x20
+[    1.624120] do_one_initcall+0x138/0x210
+[    1.624123] kernel_init_freeable+0x1f8/0x288
+[    1.624126] kernel_init+0x10/0x1f8
+[    1.624129] ret_from_fork+0x10/0x18
+
+Signed-off-by: Yaroslav Furman <yaro330@gmail.com>
+Signed-off-by: Vaisakh Murali <mvaisakh@statixos.com>
+Signed-off-by: Cyber Knight <cyberknight755@gmail.com>
+Signed-off-by: NotZeetaa <rodrigo2005contente@gmail.com>
+---
+ drivers/thermal/of-thermal.c      |  2 +-
+ drivers/thermal/thermal_helpers.c | 47 +++++++++++++++++++++++++++++++
+ include/linux/thermal.h           |  1 +
+ 3 files changed, 49 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/thermal/of-thermal.c b/drivers/thermal/of-thermal.c
+index 2981cae4013b..3de519f03a62 100644
+--- a/drivers/thermal/of-thermal.c
++++ b/drivers/thermal/of-thermal.c
+@@ -136,7 +136,7 @@ static int virt_sensor_read_temp(void *data, int *val)
+ 	for (idx = 0; idx < sens->num_sensors; idx++) {
+ 		int sens_temp = 0;
+ 
+-		ret = thermal_zone_get_temp(sens->tz[idx], &sens_temp);
++		ret = thermal_zone_get_temp_nolock(sens->tz[idx], &sens_temp);
+ 		if (ret) {
+ 			pr_err("virt zone: sensor[%s] read error:%d\n",
+ 				sens->tz[idx]->type, ret);
+diff --git a/drivers/thermal/thermal_helpers.c b/drivers/thermal/thermal_helpers.c
+index 80955c55543a..39044301af50 100644
+--- a/drivers/thermal/thermal_helpers.c
++++ b/drivers/thermal/thermal_helpers.c
+@@ -113,6 +113,53 @@ int thermal_zone_get_temp(struct thermal_zone_device *tz, int *temp)
+ }
+ EXPORT_SYMBOL_GPL(thermal_zone_get_temp);
+ 
++/**
++ * thermal_zone_get_temp() - returns the temperature of a thermal zone
++ * without holding a mutex (YIKES)
++ * @tz: a valid pointer to a struct thermal_zone_device
++ * @temp: a valid pointer to where to store the resulting temperature.
++ *
++ * When a valid thermal zone reference is passed, it will fetch its
++ * temperature and fill @temp.
++ *
++ * Return: On success returns 0, an error code otherwise
++ */
++int thermal_zone_get_temp_nolock(struct thermal_zone_device *tz, int *temp)
++{
++	int ret = -EINVAL;
++	int count;
++	int crit_temp = INT_MAX;
++	enum thermal_trip_type type;
++
++	if (!tz || IS_ERR(tz) || !tz->ops->get_temp)
++		goto exit;
++
++	ret = tz->ops->get_temp(tz, temp);
++
++	if (IS_ENABLED(CONFIG_THERMAL_EMULATION) && tz->emul_temperature) {
++		for (count = 0; count < tz->trips; count++) {
++			ret = tz->ops->get_trip_type(tz, count, &type);
++			if (!ret && type == THERMAL_TRIP_CRITICAL) {
++				ret = tz->ops->get_trip_temp(tz, count,
++						&crit_temp);
++				break;
++			}
++		}
++
++		/*
++		 * Only allow emulating a temperature when the real temperature
++		 * is below the critical temperature so that the emulation code
++		 * cannot hide critical conditions.
++		 */
++		if (!ret && *temp < crit_temp)
++			*temp = tz->emul_temperature;
++	}
++	trace_thermal_query_temp(tz, *temp);
++exit:
++	return ret;
++}
++EXPORT_SYMBOL_GPL(thermal_zone_get_temp_nolock);
++
+ void thermal_zone_set_trips(struct thermal_zone_device *tz)
+ {
+ 	int low = -INT_MAX;
+diff --git a/include/linux/thermal.h b/include/linux/thermal.h
+index 6d4f2cc41515..67cf075cf7d2 100644
+--- a/include/linux/thermal.h
++++ b/include/linux/thermal.h
+@@ -531,6 +531,7 @@ void thermal_cooling_device_unregister(struct thermal_cooling_device *);
+ struct thermal_zone_device *thermal_zone_get_zone_by_name(const char *name);
+ struct thermal_cooling_device *thermal_zone_get_cdev_by_name(const char *name);
+ int thermal_zone_get_temp(struct thermal_zone_device *tz, int *temp);
++int thermal_zone_get_temp_nolock(struct thermal_zone_device *tz, int *temp);
+ int thermal_zone_get_slope(struct thermal_zone_device *tz);
+ int thermal_zone_get_offset(struct thermal_zone_device *tz);
+ 
+-- 
+2.49.0
+

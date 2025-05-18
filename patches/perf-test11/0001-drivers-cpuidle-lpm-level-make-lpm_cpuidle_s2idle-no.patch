@@ -1,0 +1,49 @@
+From caa60eb2189b69b17802c4ab97b97cde264602f8 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Sun, 11 May 2025 11:01:44 +0500
+Subject: [PATCH] drivers/cpuidle/lpm-level: make lpm_cpuidle_s2idle non-void
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/cpuidle/lpm-levels.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/cpuidle/lpm-levels.c b/drivers/cpuidle/lpm-levels.c
+index 52cc0f3da7df..9f893fa21b72 100644
+--- a/drivers/cpuidle/lpm-levels.c
++++ b/drivers/cpuidle/lpm-levels.c
+@@ -1499,12 +1499,13 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
+ 	return idx;
+ }
+ 
+-static void lpm_cpuidle_s2idle(struct cpuidle_device *dev,
++static int lpm_cpuidle_s2idle(struct cpuidle_device *dev,
+ 		struct cpuidle_driver *drv, int idx)
+ {
+ 	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
+ 	const struct cpumask *cpumask = get_cpu_mask(dev->cpu);
+ 	bool success = false;
++	int ret;
+ 
+ 	for (; idx >= 0; idx--) {
+ 		if (lpm_cpu_mode_allow(dev->cpu, idx, false))
+@@ -1512,7 +1513,7 @@ static void lpm_cpuidle_s2idle(struct cpuidle_device *dev,
+ 	}
+ 	if (idx < 0) {
+ 		pr_err("Failed suspend\n");
+-		return;
++		return -EPERM;
+ 	}
+ 
+ 	cpu_prepare(cpu, idx, true);
+@@ -1736,6 +1737,7 @@ static int lpm_suspend_enter(suspend_state_t state)
+ 	const struct cpumask *cpumask = get_cpu_mask(cpu);
+ 	int idx;
+ 	bool success;
++	int ret;
+ 
+ 	for (idx = lpm_cpu->nlevels - 1; idx >= 0; idx--) {
+ 		if (lpm_cpu_mode_allow(cpu, idx, false))
+-- 
+2.49.0
+

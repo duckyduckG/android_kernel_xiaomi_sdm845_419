@@ -1,0 +1,26 @@
+From 4a1c0385783455172c1194dcdcf523e0f1bb2a2d Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Sun, 11 May 2025 11:00:48 +0500
+Subject: [PATCH] include/linux/cpuidle: make *enter_s2idle non-void
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ include/linux/cpuidle.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/include/linux/cpuidle.h b/include/linux/cpuidle.h
+index 188201a3e892..b0e7eea46615 100644
+--- a/include/linux/cpuidle.h
++++ b/include/linux/cpuidle.h
+@@ -60,7 +60,7 @@ struct cpuidle_state {
+ 	 * suspended, so it must not re-enable interrupts at any point (even
+ 	 * temporarily) or attempt to change states of clock event devices.
+ 	 */
+-	void (*enter_s2idle) (struct cpuidle_device *dev,
++	int (*enter_s2idle) (struct cpuidle_device *dev,
+ 			      struct cpuidle_driver *drv,
+ 			      int index);
+ };
+-- 
+2.49.0
+

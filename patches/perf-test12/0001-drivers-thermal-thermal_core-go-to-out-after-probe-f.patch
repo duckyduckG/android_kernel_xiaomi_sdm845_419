@@ -1,0 +1,32 @@
+From ac63229b0c81de586bf495e75ad6fdd0a26d55e8 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Tue, 13 May 2025 14:56:41 +0500
+Subject: [PATCH] drivers/thermal/thermal_core: go to out after probe fail for
+ thermal-message
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/thermal/thermal_core.c | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index 2f3c7bd37c90..f693dbf05828 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -1708,9 +1708,11 @@ static int of_parse_thermal_message(void)
+ 	int ret = 0;
+ 
+ 	np = of_find_node_by_name(NULL, "thermal-message");
+-	if (!np)
++	if (!np) {
+ 		pr_err("unable to find thermal message\n");
+-		return -EINVAL;
++		ret = -EINVAL;
++		goto out;
++	}
+ 
+ 	tm = kzalloc(sizeof(struct thermal_message), GFP_KERNEL);
+ 	if (!tm) {
+-- 
+2.49.0
+

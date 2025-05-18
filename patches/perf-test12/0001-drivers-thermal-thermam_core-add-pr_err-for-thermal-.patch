@@ -1,0 +1,26 @@
+From 33707b39609d87251c8699e56ef6737b0eca0eea Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Tue, 13 May 2025 02:30:41 +0500
+Subject: [PATCH] drivers/thermal/thermam_core: add pr_err for thermal-message
+ node
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/thermal/thermal_core.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index 5344f4d8d016..37140bd7662f 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -1707,6 +1707,7 @@ static int of_parse_thermal_message(void)
+ 
+ 	np = of_find_node_by_name(NULL, "thermal-message");
+ 	if (!np)
++		pr_err("unable to find thermal message\n");
+ 		return -EINVAL;
+ 
+ 	if (of_property_read_string(np, "board-sensor", &board_sensor))
+-- 
+2.49.0
+

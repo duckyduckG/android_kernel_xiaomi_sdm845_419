@@ -1,0 +1,53 @@
+From 728b362d49447e0cb48a8f15cf8e79bc70fa4aab Mon Sep 17 00:00:00 2001
+From: Maulik Shah <mkshah@codeaurora.org>
+Date: Sun, 11 May 2025 10:44:24 +0500
+Subject: [PATCH] BACKPORT: cpuidle: lpm-levels: Set suspend and s2idle ops
+ later during  probe
+
+There is a possibility of failing probe after setting suspend and
+s2idle ops. Register suspend ops later during probe after which
+there is no failure.
+
+While at this, also add missing dma_free_coherent call.
+
+Change-Id: I824f5d433623a4d7309875a61c68778f74d139f7
+Signed-off-by: Maulik Shah <mkshah@codeaurora.org>
+---
+ drivers/cpuidle/lpm-levels.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/cpuidle/lpm-levels.c b/drivers/cpuidle/lpm-levels.c
+index 79163f62283a..52cc0f3da7df 100644
+--- a/drivers/cpuidle/lpm-levels.c
++++ b/drivers/cpuidle/lpm-levels.c
+@@ -1804,8 +1804,6 @@ static int lpm_probe(struct platform_device *pdev)
+ 	 * core.  BUG in existing code but no known issues possibly because of
+ 	 * how late lpm_levels gets initialized.
+ 	 */
+-	suspend_set_ops(&lpm_suspend_ops);
+-	s2idle_set_ops(&lpm_s2idle_ops);
+ 	hrtimer_init(&lpm_hrtimer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+ 	for_each_possible_cpu(cpu) {
+ 		cpu_histtimer = &per_cpu(histtimer, cpu);
+@@ -1848,6 +1846,9 @@ static int lpm_probe(struct platform_device *pdev)
+ 		goto failed;
+ 	}
+ 
++	suspend_set_ops(&lpm_suspend_ops);
++	s2idle_set_ops(&lpm_s2idle_ops);
++
+ 	set_update_ipi_history_callback(update_ipi_history);
+ 
+ 	/* Add lpm_debug to Minidump*/
+@@ -1863,6 +1864,8 @@ static int lpm_probe(struct platform_device *pdev)
+ failed:
+ 	free_cluster_node(lpm_root_node);
+ 	lpm_root_node = NULL;
++	dma_free_coherent(&pdev->dev, size, lpm_debug, lpm_debug_phys);
++
+ 	return ret;
+ }
+ 
+-- 
+2.49.0
+

@@ -1,0 +1,522 @@
+From 10bff7e1269d51fa17ed20f57911c517ce742578 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Wed, 14 May 2025 20:55:23 +0500
+Subject: [PATCH] drivers/thermal: selectively import thermal changes
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/cpufreq/cpufreq.c      |   4 +
+ drivers/thermal/cpu_cooling.c  |  62 ++++---
+ drivers/thermal/thermal_core.c | 284 +++++++++++++++++++++++++++++++++
+ include/linux/cpu_cooling.h    |   2 +
+ include/linux/cpufreq.h        |   1 +
+ 5 files changed, 335 insertions(+), 18 deletions(-)
+
+diff --git a/drivers/cpufreq/cpufreq.c b/drivers/cpufreq/cpufreq.c
+index b050316480fc..2393a653552d 100644
+--- a/drivers/cpufreq/cpufreq.c
++++ b/drivers/cpufreq/cpufreq.c
+@@ -2269,6 +2269,10 @@ static int cpufreq_set_policy(struct cpufreq_policy *policy,
+ 	/* adjust if necessary - hardware incompatibility */
+ 	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
+ 			CPUFREQ_INCOMPATIBLE, new_policy);
++ 
++	/* the adjusted frequency should not exceed thermal limit */
++	blocking_notifier_call_chain(&cpufreq_policy_notifier_list,
++			CPUFREQ_THERMAL, new_policy);
+ 
+ 	/*
+ 	 * verify the cpu speed can be set within this limit, which might be
+diff --git a/drivers/thermal/cpu_cooling.c b/drivers/thermal/cpu_cooling.c
+index 4a4deb7c5a53..800838854cc9 100644
+--- a/drivers/thermal/cpu_cooling.c
++++ b/drivers/thermal/cpu_cooling.c
+@@ -36,6 +36,7 @@
+ 
+ #include <trace/events/thermal.h>
+ 
++#define USE_LMH_DEV	0
+ /*
+  * Cooling state <-> CPUFreq frequency
+  *
+@@ -126,7 +127,7 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
+ 	unsigned long clipped_freq = ULONG_MAX, floor_freq = 0;
+ 	struct cpufreq_cooling_device *cpufreq_cdev;
+ 
+-	if (event != CPUFREQ_INCOMPATIBLE)
++	if (event != CPUFREQ_THERMAL)
+ 		return NOTIFY_DONE;
+ 
+ 	mutex_lock(&cooling_list_lock);
+@@ -152,19 +153,40 @@ static int cpufreq_thermal_notifier(struct notifier_block *nb,
+ 		 * Similarly, if policy minimum set by the user is less than
+ 		 * the floor_frequency, then adjust the policy->min.
+ 		 */
+-		clipped_freq = cpufreq_cdev->clipped_freq;
+-		floor_freq = cpufreq_cdev->floor_freq;
+-		if (policy->max > clipped_freq || policy->min < floor_freq)
+-			cpufreq_verify_within_limits(policy, floor_freq,
+-							clipped_freq);
+-		break;
++		if (clipped_freq > cpufreq_cdev->clipped_freq)
++			clipped_freq = cpufreq_cdev->clipped_freq;
+ 	}
+-
++	
++	cpufreq_verify_within_limits(policy, floor_freq, clipped_freq);
+ 	mutex_unlock(&cooling_list_lock);
+ 
+ 	return NOTIFY_OK;
+ }
+ 
++void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq)
++{
++	struct cpufreq_cooling_device *cpufreq_cdev;
++	struct thermal_cooling_device *cdev;
++	unsigned int cdev_cpu;
++	unsigned int level;
++
++	list_for_each_entry(cpufreq_cdev, &cpufreq_cdev_list, node) {
++		sscanf(cpufreq_cdev->cdev->type, "thermal-cpufreq-%d", &cdev_cpu);
++		if (cdev_cpu == cpu) {
++			for (level = 0; level < cpufreq_cdev->max_level; level++) {
++				int target_freq = cpufreq_cdev->em->table[level].frequency;
++				if (max_freq >= target_freq) {
++					cdev = cpufreq_cdev->cdev;
++					if (cdev)
++						cdev->ops->set_cur_state(cdev, level);
++					break;
++				}
++			}
++			break;
++		}
++	}
++}
++
+ #ifdef CONFIG_ENERGY_MODEL
+ /**
+  * get_level: Find the level for a particular frequency
+@@ -406,7 +428,7 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
+ 
+ 	/* Request state should be less than max_level */
+ 	if (WARN_ON(state > cpufreq_cdev->max_level))
+-		return -EINVAL;
++		state = cpufreq_cdev->max_level;
+ 
+ 	/* Check if the old cooling action is same as new cooling action */
+ 	if (cpufreq_cdev->cpufreq_state == state)
+@@ -420,13 +442,18 @@ static int cpufreq_set_cur_state(struct thermal_cooling_device *cdev,
+ 	 * can handle the CPU freq mitigation, if not, notify cpufreq
+ 	 * framework.
+ 	 */
+-	if (cpufreq_cdev->plat_ops &&
+-		cpufreq_cdev->plat_ops->ceil_limit)
++	if (USE_LMH_DEV && cpufreq_cdev->plat_ops &&
++		cpufreq_cdev->plat_ops->ceil_limit) {
+ 		cpufreq_cdev->plat_ops->ceil_limit(cpufreq_cdev->policy->cpu,
+ 							clip_freq);
+-	else
++		get_online_cpus();
+ 		cpufreq_update_policy(cpufreq_cdev->policy->cpu);
+-
++		put_online_cpus();
++	} else {
++		get_online_cpus();
++		cpufreq_update_policy(cpufreq_cdev->policy->cpu);
++		put_online_cpus();
++	}
+ 	return 0;
+ }
+ 
+@@ -702,7 +729,7 @@ __cpufreq_cooling_register(struct device_node *np,
+ 	list_add(&cpufreq_cdev->node, &cpufreq_cdev_list);
+ 	mutex_unlock(&cooling_list_lock);
+ 
+-	if (first && !cpufreq_cdev->plat_ops)
++	if (first)
+ 		cpufreq_register_notifier(&thermal_cpufreq_notifier_block,
+ 					  CPUFREQ_POLICY_NOTIFIER);
+ 
+@@ -842,10 +869,9 @@ void cpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
+ 	mutex_unlock(&cooling_list_lock);
+ 
+ 	if (last) {
+-		if (!cpufreq_cdev->plat_ops)
+-			cpufreq_unregister_notifier(
+-					&thermal_cpufreq_notifier_block,
+-					CPUFREQ_POLICY_NOTIFIER);
++		cpufreq_unregister_notifier(
++				&thermal_cpufreq_notifier_block,
++				CPUFREQ_POLICY_NOTIFIER);
+ 	}
+ 
+ 	thermal_cooling_device_unregister(cpufreq_cdev->cdev);
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index aab2dca801c7..b4ffd027faeb 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -22,6 +22,11 @@
+ #include <net/netlink.h>
+ #include <net/genetlink.h>
+ #include <linux/suspend.h>
++#include <linux/cpu_cooling.h>
++
++#ifdef CONFIG_DRM
++#include <drm/drm_notifier_mi.h>
++#endif
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/thermal.h>
+@@ -35,6 +40,8 @@ MODULE_LICENSE("GPL v2");
+ 
+ #define THERMAL_MAX_ACTIVE	16
+ 
++#define CPU_LIMITS_PARAM_NUM	2
++
+ static DEFINE_IDA(thermal_tz_ida);
+ static DEFINE_IDA(thermal_cdev_ida);
+ 
+@@ -53,6 +60,21 @@ static struct thermal_governor *def_governor;
+ 
+ static struct workqueue_struct *thermal_passive_wq;
+ 
++#ifdef CONFIG_DRM
++struct screen_monitor {
++	struct notifier_block thermal_notifier;
++	int screen_state; /* 1: on; 0:off */
++};
++
++struct screen_monitor sm;
++#endif
++
++static atomic_t switch_mode = ATOMIC_INIT(-1);
++static atomic_t temp_state = ATOMIC_INIT(0);
++static char boost_buf[128];
++const char *board_sensor;
++static char board_sensor_temp[128];
++
+ /*
+  * Governor section: set of functions to handle thermal governors
+  *
+@@ -942,6 +964,8 @@ static struct class thermal_class = {
+ 	.dev_release = thermal_release,
+ };
+ 
++static struct device thermal_message_dev;
++
+ static inline
+ void print_bind_err_msg(struct thermal_zone_device *tz,
+ 			struct thermal_cooling_device *cdev, int ret)
+@@ -1661,6 +1685,246 @@ static struct notifier_block thermal_pm_nb = {
+ 	.notifier_call = thermal_pm_notify,
+ };
+ 
++#ifdef CONFIG_DRM
++static ssize_t
++thermal_screen_state_show(struct device *dev,
++		struct device_attribute *attr, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%d\n", sm.screen_state);
++}
++
++static DEVICE_ATTR(screen_state, 0644,
++		thermal_screen_state_show, NULL);
++#endif
++
++static ssize_t
++thermal_sconfig_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&switch_mode));
++}
++
++static ssize_t
++thermal_sconfig_store(struct device *dev,
++				      struct device_attribute *attr, const char *buf, size_t len)
++{
++	int val = -1;
++
++	val = simple_strtol(buf, NULL, 10);
++
++	atomic_set(&switch_mode, val);
++
++	return len;
++}
++
++static DEVICE_ATTR(sconfig, 0664,
++		   thermal_sconfig_show, thermal_sconfig_store);
++
++static ssize_t
++thermal_boost_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, boost_buf);
++}
++
++static ssize_t
++thermal_boost_store(struct device *dev,
++				      struct device_attribute *attr, const char *buf, size_t len)
++{
++	int ret;
++	ret = snprintf(boost_buf, sizeof(boost_buf), buf);
++	return len;
++}
++
++static DEVICE_ATTR(boost, 0644,
++		   thermal_boost_show, thermal_boost_store);
++
++static ssize_t
++thermal_temp_state_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%d\n", atomic_read(&temp_state));
++}
++
++static ssize_t
++thermal_temp_state_store(struct device *dev,
++				      struct device_attribute *attr, const char *buf, size_t len)
++{
++	int val = -1;
++
++	val = simple_strtol(buf, NULL, 10);
++
++	atomic_set(&temp_state, val);
++
++	return len;
++}
++
++static DEVICE_ATTR(temp_state, 0664,
++		   thermal_temp_state_show, thermal_temp_state_store);
++
++static ssize_t
++cpu_limits_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	return 0;
++}
++
++static ssize_t
++cpu_limits_store(struct device *dev,
++				      struct device_attribute *attr, const char *buf, size_t len)
++{
++	unsigned int cpu;
++	unsigned int max;
++
++	if (sscanf(buf, "cpu%u %u", &cpu, &max) != CPU_LIMITS_PARAM_NUM) {
++		pr_err("input param error, can not prase param\n");
++		return -EINVAL;
++	}
++
++	cpu_limits_set_level(cpu, max);
++
++	return len;
++}
++
++static DEVICE_ATTR(cpu_limits, 0664,
++		   cpu_limits_show, cpu_limits_store);
++
++static ssize_t
++thermal_board_sensor_show(struct device *dev,
++		struct device_attribute *attr, char *buf)
++{
++	if (!board_sensor)
++		board_sensor = "invalid";
++
++	return snprintf(buf, PAGE_SIZE, "%s", board_sensor);
++}
++
++static DEVICE_ATTR(board_sensor, 0664,
++		thermal_board_sensor_show, NULL);
++
++static ssize_t
++thermal_board_sensor_temp_show(struct device *dev,
++				struct device_attribute *attr, char *buf)
++{
++       return snprintf(buf, PAGE_SIZE, board_sensor_temp);
++}
++
++static ssize_t
++thermal_board_sensor_temp_store(struct device *dev,
++				struct device_attribute *attr, const char *buf, size_t len)
++{
++       snprintf(board_sensor_temp, sizeof(board_sensor_temp), buf);
++
++       return len;
++}
++
++static DEVICE_ATTR(board_sensor_temp, 0664,
++		thermal_board_sensor_temp_show, thermal_board_sensor_temp_store);
++
++static int create_thermal_message_node(void)
++{
++	int ret = 0;
++
++	thermal_message_dev.class = &thermal_class;
++
++	dev_set_name(&thermal_message_dev, "thermal_message");
++	ret = device_register(&thermal_message_dev);
++	if (!ret) {
++#ifdef CONFIG_DRM
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_screen_state.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create batt message node failed\n");
++#endif
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_sconfig.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create sconfig node failed\n");
++
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_boost.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create boost node failed\n");
++
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_temp_state.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create temp state node failed\n");
++
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_cpu_limits.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create cpu limits node failed\n");
++				ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_board_sensor.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create board sensor node failed\n");
++
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_board_sensor_temp.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create board sensor temp node failed\n");
++	}
++
++	return ret;
++}
++
++static void destroy_thermal_message_node(void)
++{
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_cpu_limits.attr);
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_temp_state.attr);
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_boost.attr);
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_sconfig.attr);
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_board_sensor_temp.attr);
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_board_sensor.attr);
++#ifdef CONFIG_DRM
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_screen_state.attr);
++#endif
++	device_unregister(&thermal_message_dev);
++}
++
++#ifdef CONFIG_DRM
++static int screen_state_for_thermal_callback(struct notifier_block *nb, unsigned long val, void *data)
++{
++	struct mi_drm_notifier *evdata = data;
++	unsigned int blank;
++
++	if (val != MI_DRM_EVENT_BLANK || !evdata || !evdata->data)
++		return 0;
++
++	blank = *(int *)(evdata->data);
++	switch (blank) {
++	case MI_DRM_BLANK_LP1:
++		pr_warn("%s: DRM_BLANK_LP1\n", __func__);
++	case MI_DRM_BLANK_LP2:
++		pr_warn("%s: DRM_BLANK_LP2\n", __func__);
++	case MI_DRM_BLANK_POWERDOWN:
++		sm.screen_state = 0;
++		pr_warn("%s: DRM_BLANK_POWERDOWN\n", __func__);
++		break;
++	case MI_DRM_BLANK_UNBLANK:
++		sm.screen_state = 1;
++		pr_warn("%s: DRM_BLANK_UNBLANK\n", __func__);
++		break;
++	default:
++		break;
++	}
++
++	sysfs_notify(&thermal_message_dev.kobj, NULL, "screen_state");
++
++	return NOTIFY_OK;
++}
++#endif
++
++static int of_parse_thermal_message(void)
++{
++	struct device_node *np;
++
++	np = of_find_node_by_name(NULL, "thermal-message");
++	if (!np)
++		return -EINVAL;
++
++	if (of_property_read_string(np, "board-sensor", &board_sensor))
++		return -EINVAL;
++
++	pr_info("%s board sensor: %s\n", board_sensor);
++
++	return 0;
++}
++
+ static int __init thermal_init(void)
+ {
+ 	int result;
+@@ -1692,6 +1956,22 @@ static int __init thermal_init(void)
+ 		pr_warn("Thermal: Can not register suspend notifier, return %d\n",
+ 			result);
+ 
++	result = create_thermal_message_node();
++	if (result)
++		pr_warn("Thermal: create thermal message node failed, return %d\n",
++			result);
++	result = of_parse_thermal_message();
++	if (result)
++		pr_warn("Thermal: Can not parse thermal message node, return %d\n",
++			result);
++
++#ifdef CONFIG_DRM
++	sm.thermal_notifier.notifier_call = screen_state_for_thermal_callback;
++	if (mi_drm_register_client(&sm.thermal_notifier) < 0) {
++		pr_warn("Thermal: register screen state callback failed\n");
++	}
++#endif
++
+ 	return 0;
+ 
+ exit_zone_parse:
+@@ -1711,10 +1991,14 @@ static int __init thermal_init(void)
+ 
+ static void thermal_exit(void)
+ {
++#ifdef CONFIG_DRM
++	mi_drm_unregister_client(&sm.thermal_notifier);
++#endif
+ 	unregister_pm_notifier(&thermal_pm_nb);
+ 	of_thermal_destroy_zones();
+ 	destroy_workqueue(thermal_passive_wq);
+ 	genetlink_exit();
++	destroy_thermal_message_node();
+ 	class_unregister(&thermal_class);
+ 	thermal_unregister_governors();
+ 	ida_destroy(&thermal_tz_ida);
+diff --git a/include/linux/cpu_cooling.h b/include/linux/cpu_cooling.h
+index 9fc819b637b7..e38d824c28f5 100644
+--- a/include/linux/cpu_cooling.h
++++ b/include/linux/cpu_cooling.h
+@@ -87,6 +87,8 @@ void cpufreq_cooling_unregister(struct thermal_cooling_device *cdev)
+ }
+ #endif	/* CONFIG_CPU_THERMAL */
+ 
++void cpu_limits_set_level(unsigned int cpu, unsigned int max_freq);
++
+ #if defined(CONFIG_THERMAL_OF) && defined(CONFIG_CPU_THERMAL)
+ /**
+  * of_cpufreq_cooling_register - create cpufreq cooling device based on DT.
+diff --git a/include/linux/cpufreq.h b/include/linux/cpufreq.h
+index 52ba843aa4cf..ef1f3ee942ef 100644
+--- a/include/linux/cpufreq.h
++++ b/include/linux/cpufreq.h
+@@ -430,6 +430,7 @@ static inline void cpufreq_resume(void) {}
+ #define CPUFREQ_ADJUST			(0)
+ #define CPUFREQ_NOTIFY			(1)
+ #define CPUFREQ_INCOMPATIBLE	(6)
++#define CPUFREQ_THERMAL			(2)
+ 
+ #ifdef CONFIG_CPU_FREQ
+ int cpufreq_register_notifier(struct notifier_block *nb, unsigned int list);
+-- 
+2.49.0
+

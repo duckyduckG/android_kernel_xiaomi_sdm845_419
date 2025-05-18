@@ -1,0 +1,149 @@
+From 67c01183256f9fcdf1a0d2e87a80f7952638e6b6 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Tue, 13 May 2025 03:25:13 +0500
+Subject: [PATCH] drivers/thermal: add thermal-message node
+
+Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+---
+ drivers/thermal/thermal_core.c | 60 +++++++++++++++++++++++++++++++++-
+ drivers/thermal/thermal_core.h | 10 ++++++
+ 2 files changed, 69 insertions(+), 1 deletion(-)
+
+diff --git a/drivers/thermal/thermal_core.c b/drivers/thermal/thermal_core.c
+index 37140bd7662f..f6c232c267e8 100644
+--- a/drivers/thermal/thermal_core.c
++++ b/drivers/thermal/thermal_core.c
+@@ -91,6 +91,7 @@ static char board_sensor_temp[128];
+ static char board_sensor_second_temp[128];
+ const char *ambient_sensor;
+ static char ambient_sensor_temp[128];
++struct thermal_message *tm;
+ 
+ /*
+  * Governor section: set of functions to handle thermal governors
+@@ -1704,12 +1705,38 @@ static struct notifier_block thermal_pm_nb = {
+ static int of_parse_thermal_message(void)
+ {
+ 	struct device_node *np;
++	int ret = 0;
+ 
+ 	np = of_find_node_by_name(NULL, "thermal-message");
+ 	if (!np)
+ 		pr_err("unable to find thermal message\n");
+ 		return -EINVAL;
+ 
++	tm = kzalloc(sizeof(struct thermal_message), GFP_KERNEL);
++	if (!tm) {
++		pr_err("unable alloc memory for thermal message\n");
++		ret = -ENOMEM;
++		goto out;
++	}
++
++	ret = of_property_read_string(np, "thermal,batt-array-size", &tm->batt_array_size);
++	if (ret && (ret != -EINVAL)) {
++		pr_err("Unable to read batt array size\n");
++		tm->batt_array_size = NULL;
++	}
++
++	ret = of_property_read_string(np, "thermal,batt-level-screen-on", &tm->batt_level_screen_on);
++	if (ret && (ret != -EINVAL)) {
++		pr_err("Unable to read batt message screen on\n");
++		tm->batt_level_screen_on = NULL;
++	}
++
++	ret = of_property_read_string(np, "thermal,batt-level-screen-off", &tm->batt_level_screen_off);
++	if (ret && (ret != -EINVAL)) {
++		pr_err("Unable to read batt message screen off\n");
++		tm->batt_level_screen_off = NULL;
++	}
++
+ 	if (of_property_read_string(np, "board-sensor", &board_sensor))
+ 		return -EINVAL;
+ 	pr_info("%s board sensor: %s\n", __func__, board_sensor);
+@@ -1718,9 +1745,35 @@ static int of_parse_thermal_message(void)
+ 		return -EINVAL;
+ 	pr_info("%s ambient sensor: %s\n", __func__, ambient_sensor);
+ 
+-	return 0;
++out:
++	if (!ret && tm && tm->batt_level_screen_on && tm->batt_level_screen_off)
++		tm->message_ok = true;
++
++	return ret;
+ }
+ 
++void free_thermal_message(void)
++{
++	if (tm) {
++		kfree(tm);
++		tm = NULL;
++	}
++}
++ 
++static ssize_t
++thermal_message_of_batt_show(struct device *dev,
++				      struct device_attribute *attr, char *buf)
++{
++	if (!tm || !tm->message_ok)
++		return -EINVAL;
++
++	return snprintf(buf, PAGE_SIZE, "array_size %s\nscreen_on %s\nscreen_off %s\n",
++			tm->batt_array_size, tm->batt_level_screen_on, tm->batt_level_screen_off);
++}
++
++static DEVICE_ATTR(batt_message, 0644,
++		   thermal_message_of_batt_show, NULL);
++
+ #ifdef CONFIG_DRM
+ static ssize_t screen_state_show(struct device *dev,
+ 	struct device_attribute *attr, char *buf)
+@@ -1996,6 +2049,9 @@ static int create_thermal_message_node(void)
+ 	dev_set_name(&thermal_message_dev, "thermal_message");
+ 	ret = device_register(&thermal_message_dev);
+ 	if (!ret) {
++		ret = sysfs_create_file(&thermal_message_dev.kobj, &dev_attr_batt_message.attr);
++		if (ret < 0)
++			pr_warn("Thermal: create batt message node failed\n");
+ #ifdef CONFIG_DRM
+ 		ret = sysfs_create_file(&thermal_message_dev.kobj,
+ 					&dev_attr_screen_state.attr);
+@@ -2133,6 +2189,8 @@ static void destroy_thermal_message_node(void)
+ 	sysfs_remove_file(&thermal_message_dev.kobj,
+ 			  &dev_attr_usb_online.attr);
+ 
++	sysfs_remove_file(&thermal_message_dev.kobj, &dev_attr_batt_message.attr);
++
+ 	device_unregister(&thermal_message_dev);
+ }
+ 
+diff --git a/drivers/thermal/thermal_core.h b/drivers/thermal/thermal_core.h
+index 490426ae05df..55b95544bc2a 100644
+--- a/drivers/thermal/thermal_core.h
++++ b/drivers/thermal/thermal_core.h
+@@ -42,6 +42,15 @@ struct thermal_instance {
+ 	struct list_head cdev_node; /* node in cdev->thermal_instances */
+ 	unsigned int weight; /* The weight of the cooling device */
+ };
++ 
++struct thermal_message {
++	bool message_ok;
++	const char *batt_array_size;
++	const char *batt_level_screen_on;
++	const char *batt_level_screen_off;
++};
++
++extern struct thermal_message *tm;
+ 
+ #define to_thermal_zone(_dev) \
+ 	container_of(_dev, struct thermal_zone_device, device)
+@@ -150,6 +159,7 @@ int of_thermal_aggregate_trip(struct thermal_zone_device *tz,
+ void of_thermal_handle_trip(struct thermal_zone_device *tz);
+ void of_thermal_handle_trip_temp(struct thermal_zone_device *tz,
+ 					int trip_temp);
++void free_thermal_message(void);
+ #else
+ static inline int of_parse_thermal_zones(void) { return 0; }
+ static inline void of_thermal_destroy_zones(void) { }
+-- 
+2.49.0
+

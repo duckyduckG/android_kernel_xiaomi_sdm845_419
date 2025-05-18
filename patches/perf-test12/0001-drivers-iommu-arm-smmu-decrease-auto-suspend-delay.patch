@@ -1,0 +1,26 @@
+From 6ec7089c5a0ed10a5c468652c526a3750aeb5287 Mon Sep 17 00:00:00 2001
+From: duckyduckg <duckyduckg65@gmail.com>
+Date: Mon, 12 May 2025 14:06:51 +0500
+Subject: [PATCH] drivers/iommu/arm-smmu: decrease auto suspend delay * idk why
+ but 20 seems high for 419 Signed-off-by: duckyduckg <duckyduckg65@gmail.com>
+
+---
+ drivers/iommu/arm-smmu.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/drivers/iommu/arm-smmu.c b/drivers/iommu/arm-smmu.c
+index bc5d55822da5..17be2ae9424d 100644
+--- a/drivers/iommu/arm-smmu.c
++++ b/drivers/iommu/arm-smmu.c
+@@ -3574,7 +3574,7 @@ static int arm_smmu_attach_dev(struct iommu_domain *domain, struct device *dev)
+ 	 * to 5-10sec worth of reprogramming the context bank, while
+ 	 * the system appears to be locked up to the user.
+ 	 */
+-	pm_runtime_set_autosuspend_delay(smmu->dev, 20);
++	pm_runtime_set_autosuspend_delay(smmu->dev, 15);
+ 	pm_runtime_use_autosuspend(smmu->dev);
+ #endif
+ 
+-- 
+2.49.0
+
