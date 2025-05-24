@@ -473,13 +473,12 @@ static void halt_spmi_pmic_arbiter(void)
 static void msm_restart_prepare(const char *cmd)
 {
 	bool need_warm_reset = false;
-	/* Write download mode flags if we're panic'ing
-	 * Write download mode flags if restart_mode says so
+	/* Write download mode flags if restart_mode says so
 	 * Kill download mode if master-kill switch is set
 	 */
 
 	set_dload_mode(download_mode &&
-			(in_panic || restart_mode == RESTART_DLOAD));
+			(restart_mode == RESTART_DLOAD));
 
 	if (qpnp_pon_check_hard_reset_stored()) {
 		/* Set warm reset as true when device is in dload mode */
@@ -502,8 +501,13 @@ static void msm_restart_prepare(const char *cmd)
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
 
 	if (in_panic) {
-		qpnp_pon_set_restart_reason(PON_RESTART_REASON_PANIC);
-	} else if (cmd != NULL) {
+		// Reboot to recovery
+		qpnp_pon_set_restart_reason(
+			PON_RESTART_REASON_RECOVERY);
+		__raw_writel(0x77665502, restart_reason);
+		goto finish_set_restart_reason;
+	}
+	if (cmd != NULL) {
 		if (!strncmp(cmd, "bootloader", 10)) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_BOOTLOADER);
@@ -548,6 +552,7 @@ static void msm_restart_prepare(const char *cmd)
 		__raw_writel(0x77665501, restart_reason);
 	}
 
+finish_set_restart_reason:
 	flush_cache_all();
 
 	/*outer_flush_all is not supported by 64bit kernel*/
