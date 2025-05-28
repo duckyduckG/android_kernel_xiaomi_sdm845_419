@@ -263,9 +263,6 @@ static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 
  	if (is_reserved(cpu))
  		return true;
- 
-	if (sleep_disabled)
-		return true;
 
 out:
 	if (sleep_us < 0)
@@ -701,7 +698,7 @@ static int lpm_cpuidle_select(struct cpuidle_driver *drv,
 {
 	struct lpm_cpu *cpu = per_cpu(cpu_lpm, dev->cpu);
 
-	if (!cpu)
+	if (!cpu || sleep_disabled)
 		return 0;
 
 	return cpu_power_select(dev, cpu);
@@ -715,6 +712,11 @@ static int lpm_cpuidle_enter(struct cpuidle_device *dev,
 	const struct cpumask *cpumask = get_cpu_mask(dev->cpu);
 	ktime_t start = ktime_get();
 	uint64_t start_time = ktime_to_ns(start), end_time;
+
+	if (sleep_disabled) {
+		cpu_do_idle();
+		return 0;
+	}
 
 	cpu_prepare(cpu, idx, true);
 	cluster_prepare(cpu->parent, cpumask, idx, true, start_time);
