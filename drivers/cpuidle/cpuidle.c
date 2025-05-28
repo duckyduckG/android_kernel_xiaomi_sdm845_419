@@ -734,7 +734,7 @@ int cpuidle_register(struct cpuidle_driver *drv,
 EXPORT_SYMBOL_GPL(cpuidle_register);
 
 #ifdef CONFIG_SMP
-
+/*
 static void wake_up_idle_cpus(void *v)
 {
 	int cpu;
@@ -754,6 +754,7 @@ static void wake_up_idle_cpus(void *v)
 	}
 	preempt_enable();
 }
+*/
 
 /*
  * This function gets called when a part of the kernel has a new latency
@@ -764,7 +765,8 @@ static void wake_up_idle_cpus(void *v)
 static int cpuidle_latency_notify(struct notifier_block *b,
 		unsigned long l, void *v)
 {
-	wake_up_idle_cpus(v);
+	if (!lpm_sleep_disabled())
+		wake_up_all_idle_cpus();
 	return NOTIFY_OK;
 }
 
