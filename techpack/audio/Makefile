@@ -40,7 +40,9 @@ USERINCLUDE     += \
 # Needed to be compatible with the O= option
 LINUXINCLUDE    += \
                 -I$(srctree)/techpack/audio/include/uapi \
-                -I$(srctree)/techpack/audio/include
+                -I$(srctree)/techpack/audio/include \
+                -I$(srctree)/techpack/mi845/include/uapi \
+                -I$(srctree)/techpack/mi845/include
 
 ifeq ($(CONFIG_ARCH_SDXPOORWILLS), y)
 LINUXINCLUDE    += \
