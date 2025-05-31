@@ -31674,7 +31674,7 @@ static int msm_routing_probe(struct snd_soc_component *component)
 	snd_soc_add_component_controls(component, mclk_src_controls,
 				      ARRAY_SIZE(mclk_src_controls));
 #ifdef CONFIG_MACH_XIAOMI_E1N
-	elliptic_add_platform_controls(platform);
+	elliptic_add_component_controls(component);
 #endif
 	return 0;
 }
