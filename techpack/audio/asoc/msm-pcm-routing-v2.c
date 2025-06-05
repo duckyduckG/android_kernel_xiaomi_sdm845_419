@@ -34,6 +34,11 @@
 #include <dsp/q6common.h>
 #include <dsp/audio_cal_utils.h>
 
+#ifdef CONFIG_MACH_XIAOMI_E1N
+#include <dsp/apr_elliptic.h>
+#include <elliptic/elliptic_mixer_controls.h>
+#endif
+
 #include "msm-pcm-routing-v2.h"
 #include "msm-pcm-routing-devdep.h"
 #include "msm-qti-pp-config.h"
@@ -31668,7 +31673,9 @@ static int msm_routing_probe(struct snd_soc_component *component)
 				      ARRAY_SIZE(pll_clk_drift_controls));
 	snd_soc_add_component_controls(component, mclk_src_controls,
 				      ARRAY_SIZE(mclk_src_controls));
-
+#ifdef CONFIG_MACH_XIAOMI_E1N
+	elliptic_add_component_controls(component);
+#endif
 	return 0;
 }
 

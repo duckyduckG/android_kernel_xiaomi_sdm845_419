@@ -659,7 +659,7 @@ static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
  	if (is_reserved(cpu))
  		return true;
  
-	if (sleep_disabled)
+	if (sleep_disabled || sleep_us < 0)
 		return true;
 
 	bias_time = sched_lpm_disallowed_time(cpu);
@@ -669,8 +669,6 @@ static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 	}
 
 out:
-	if (sleep_us < 0)
-		return true;
 
 	return false;
 }

@@ -457,4 +457,10 @@ config MACH_XIAOMI_E10
         help
           Support for Xiaomi Poco F1 (beryllium)
 
+config MACH_XIAOMI_E1N
+        bool "E1N board"
+        select MACH_XIAOMI_SDM845
+        help
+          Support for Xiaomi Mi 8 (dipper)
+
 endmenu

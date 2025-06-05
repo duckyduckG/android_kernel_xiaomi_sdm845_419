@@ -42,6 +42,9 @@
 
 #define HFI_MAX_POLL_TRY 5
 
+#define HFI_MAX_PC_POLL_TRY 400
+#define HFI_POLL_TRY_SLEEP 1
+
 static struct hfi_info *g_hfi;
 unsigned int g_icp_mmu_hdl;
 static DEFINE_MUTEX(hfi_cmd_q_mutex);
@@ -433,7 +436,7 @@ void cam_hfi_disable_cpu(void __iomem *icp_base)
 	uint32_t val;
 	uint32_t try = 0;
 
-	while (try < HFI_MAX_POLL_TRY) {
+	while (try < HFI_MAX_PC_POLL_TRY) {
 		data = cam_io_r(icp_base + HFI_REG_A5_CSR_A5_STATUS);
 		CAM_DBG(CAM_HFI, "wfi status = %x\n", (int)data);
 
@@ -443,7 +446,8 @@ void cam_hfi_disable_cpu(void __iomem *icp_base)
 		 * and Host can the proceed. No interrupt is expected from FW
 		 * at this time.
 		 */
-		msleep(100);
+		usleep_range(HFI_POLL_TRY_SLEEP * 1000,
+			(HFI_POLL_TRY_SLEEP * 1000) + 1000);
 		try++;
 	}
 
