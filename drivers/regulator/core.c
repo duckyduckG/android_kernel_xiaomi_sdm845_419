@@ -57,7 +57,7 @@ static LIST_HEAD(regulator_map_list);
 static LIST_HEAD(regulator_ena_gpio_list);
 static LIST_HEAD(regulator_supply_alias_list);
 static bool has_full_constraints;
-static bool debug_suspend;
+static bool debug_suspend = 1;
 
 static struct dentry *debugfs_root;
 
@@ -5328,9 +5328,6 @@ static int _regulator_debug_print_enabled(struct device *dev, void *data)
  */
 void regulator_debug_print_enabled(void)
 {
-	if (likely(!debug_suspend))
-		return;
-
 	pr_info("Enabled regulators:\n");
 	class_for_each_device(&regulator_class, NULL, NULL,
 			     _regulator_debug_print_enabled);
