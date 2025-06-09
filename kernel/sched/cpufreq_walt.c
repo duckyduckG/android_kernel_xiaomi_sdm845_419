@@ -9,6 +9,7 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/binfmts.h>
 #include <linux/sched/cpufreq.h>
 #include <uapi/linux/sched/types.h>
 #include <linux/version.h>
