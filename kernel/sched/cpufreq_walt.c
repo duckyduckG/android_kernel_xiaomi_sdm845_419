@@ -20,7 +20,7 @@
 #include <trace/events/power.h>
 
 #include "walt.h"
-#include "trace.h"
+//#include "trace.h"
 
 struct waltgov_tunables {
 	struct gov_attr_set	attr_set;
