@@ -23,6 +23,10 @@
 #include "walt.h"
 //#include "trace.h"
 
+// Custom tracing
+#define pr_walt(fmt, ...) \
+	pr_info("[WALT] " fmt, ##__VA_ARGS__)
+
 struct waltgov_tunables {
 	struct gov_attr_set	attr_set;
 	unsigned int		up_rate_limit_us;
@@ -113,12 +117,17 @@ static bool waltgov_up_down_rate_limit(struct waltgov_policy *wg_policy, u64 tim
 
 	delta_ns = time - wg_policy->last_freq_update_time;
 
+	pr_walt("Rate limit check: time=%llu delta_ns=%lld next_freq=%u prev_next_freq=%u\n",
+		time, delta_ns, next_freq, wg_policy->next_freq);
+
 	if (next_freq > wg_policy->next_freq &&
 	    delta_ns < wg_policy->up_rate_delay_ns)
+		pr_walt("Up rate limited: delay=%llu\n", wg_policy->up_rate_delay_ns);
 		return true;
 
 	if (next_freq < wg_policy->next_freq &&
 	    delta_ns < wg_policy->down_rate_delay_ns)
+		pr_walt("Down rate limited: delay=%llu\n", wg_policy->down_rate_delay_ns);
 		return true;
 
 	return false;
@@ -235,22 +244,31 @@ static unsigned int get_next_freq(struct waltgov_policy *wg_policy,
 	raw_freq = walt_map_util_freq(util, wg_policy, max, wg_cpu->cpu);
 	freq = raw_freq;
 
+	pr_walt("get_next_freq: raw_freq=%u util=%lu max=%lu cpu=%d\n",
+		raw_freq, util, max, wg_cpu->cpu);
+
 	if (wg_policy->tunables->adaptive_high_freq) {
-		if (raw_freq < wg_policy->tunables->adaptive_low_freq)
+		if (raw_freq < wg_policy->tunables->adaptive_low_freq) {
 			freq = wg_policy->tunables->adaptive_low_freq;
-		else if (raw_freq <= wg_policy->tunables->adaptive_high_freq)
+			pr_walt("Adaptive freq: using low=%u\n", freq);
+		} else if (raw_freq <= wg_policy->tunables->adaptive_high_freq) {
 			freq = wg_policy->tunables->adaptive_high_freq;
+			pr_walt("Adaptive freq: using high=%u\n", freq);
+		}
 	}
 
 	if (wg_policy->cached_raw_freq && freq == wg_policy->cached_raw_freq &&
 		!wg_policy->need_freq_update)
+		pr_walt("Frequency unchanged, skipping update\n");
 		return 0;
 
 	wg_policy->need_freq_update = false;
 
 	final_freq = cpufreq_driver_resolve_freq(policy, freq);
+	pr_walt("Resolved freq: requested=%u final=%u\n", freq, final_freq);
 
 	if (!waltgov_update_next_freq(wg_policy, time, final_freq, freq))
+		pr_walt("waltgov_update_next_freq rejected freq change\n");
 		return 0;
 
 	return final_freq;
@@ -366,7 +384,11 @@ static void waltgov_update_freq(struct waltgov_callback *cb, u64 time,
 	unsigned long hs_util, rtg_boost_util;
 	unsigned int next_f;
 
+	pr_walt("waltgov_update_freq: cpu=%d time=%llu flags=0x%x\n",
+		wg_cpu->cpu, time, flags);
+
 	if (!wg_policy->tunables->pl && flags & WALT_CPUFREQ_PL)
+		pr_walt("Skipping update due to PL policy restriction\n");
 		return;
 
 	wg_cpu->util = waltgov_get_util(wg_cpu);
@@ -374,6 +396,7 @@ static void waltgov_update_freq(struct waltgov_callback *cb, u64 time,
 	raw_spin_lock(&wg_policy->update_lock);
 
 	if (wg_policy->max != wg_cpu->max) {
+		pr_walt("Max changed: old_max=%lu new_max=%lu\n", wg_policy->max, wg_cpu->max);
 		wg_policy->max = wg_cpu->max;
 		hs_util = target_util(wg_policy,
 					wg_policy->tunables->hispeed_freq);
@@ -389,19 +412,27 @@ static void waltgov_update_freq(struct waltgov_callback *cb, u64 time,
 
 	if (waltgov_should_update_freq(wg_policy, time) &&
 	    !(flags & WALT_CPUFREQ_CONTINUE)) {
+		pr_walt("Calling waltgov_next_freq_shared()\n");
 		next_f = waltgov_next_freq_shared(wg_cpu, time);
 
 		if (!next_f)
+			pr_walt("No frequency update needed\n");
 			goto out;
 
-		if (wg_policy->policy->fast_switch_enabled)
+		pr_walt("Next frequency decided: %u\n", next_f);
+
+		if (wg_policy->policy->fast_switch_enabled) {
+			pr_walt("Fast switch enabled. Switching to %u\n", next_f);
 			waltgov_fast_switch(wg_policy, time, next_f);
-		else
+		} else {
+			pr_walt("Deferred update to %u\n", next_f);
 			waltgov_deferred_update(wg_policy, time, next_f);
+		}
 	}
 
 out:
 	raw_spin_unlock(&wg_policy->update_lock);
+	pr_walt("waltgov_update_freq: done for cpu=%d\n", wg_cpu->cpu);
 }
 
 static void waltgov_work(struct kthread_work *work)
