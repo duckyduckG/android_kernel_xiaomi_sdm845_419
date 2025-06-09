@@ -98,7 +98,7 @@ static inline void waltgov_run_callback(struct rq *rq, unsigned int flags)
 
 	cb = rcu_dereference_sched(*per_cpu_ptr(&waltgov_cb_data, cpu_of(rq)));
 	if (cb)
-		cb->func(cb, walt_ktime_get_ns(), flags);
+		cb->func(cb, sched_ktime_clock(), flags);
 }
 
 static inline void
