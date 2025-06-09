@@ -45,6 +45,13 @@
 
 #define NEW_TASK_ACTIVE_TIME 100000000
 
+/* WALT cpufreq interface */
+#define WALT_CPUFREQ_CONTINUE          (1U << 1)
+#define WALT_CPUFREQ_IC_MIGRATION      (1U << 2)
+#define WALT_CPUFREQ_PL                (1U << 3)
+#define WALT_CPUFREQ_BOOST_UPDATE      (1U << 4)
+#define WALT_CPUFREQ_UCLAMP            (1U << 5)
+
 extern unsigned int sched_ravg_window;
 extern unsigned int new_sched_ravg_window;
 extern unsigned int max_possible_efficiency;
