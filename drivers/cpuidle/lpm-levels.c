@@ -43,6 +43,7 @@
 #include "../../kernel/sched/sched.h"
 #define CREATE_TRACE_POINTS
 #include <trace/events/trace_msm_low_power.h>
+#include <linux/sched/walt.h>
 
 #define SCLK_HZ (32768)
 #define PSCI_POWER_STATE(reset) (reset << 30)
@@ -264,11 +265,29 @@ static void msm_pm_set_timer(uint32_t modified_time_us)
 
 static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 {
+<<<<<<< HEAD
+=======
+	uint64_t bias_time = 0;
+	u64 timeout;
+
+>>>>>>> b77823f87883 (BACKPORT: sched/walt: Implement sched_lpm_disallowed_time() API)
 	if (cpu_isolated(cpu))
 		goto out;
 
  	if (is_reserved(cpu))
  		return true;
+<<<<<<< HEAD
+=======
+ 
+	if (sleep_disabled || sleep_us < 0)
+		return true;
+
+	bias_time = sched_lpm_disallowed_time(cpu, &timeout);
+	if (bias_time) {
+		pm_cpu->bias = bias_time;
+		return true;
+	}
+>>>>>>> b77823f87883 (BACKPORT: sched/walt: Implement sched_lpm_disallowed_time() API)
 
 out:
 	if (sleep_us < 0)
