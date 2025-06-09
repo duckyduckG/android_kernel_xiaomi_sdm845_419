@@ -73,7 +73,7 @@ struct waltgov_cpu {
 	struct waltgov_callback	cb;
 	struct waltgov_policy	*wg_policy;
 	unsigned int		cpu;
-	struct walt_cpu_load	walt_load;
+	struct sched_walt_cpu_load	walt_load;
 	unsigned long		util;
 	unsigned long		max;
 	unsigned int		flags;
