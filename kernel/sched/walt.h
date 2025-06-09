@@ -66,6 +66,41 @@ extern void update_task_ravg(struct task_struct *p, struct rq *rq, int event,
 extern unsigned int walt_big_tasks(int cpu);
 extern u64 walt_get_prev_group_run_sum(struct rq *rq);
 
+
+struct waltgov_callback {
+	void (*func)(struct waltgov_callback *cb, u64 time, unsigned int flags);
+};
+
+DECLARE_PER_CPU(struct waltgov_callback *, waltgov_cb_data);
+
+static inline void waltgov_add_callback(int cpu, struct waltgov_callback *cb,
+			void (*func)(struct waltgov_callback *cb, u64 time,
+			unsigned int flags))
+{
+	if (WARN_ON(!cb || !func))
+		return;
+
+	if (WARN_ON(per_cpu(waltgov_cb_data, cpu)))
+		return;
+
+	cb->func = func;
+	rcu_assign_pointer(per_cpu(waltgov_cb_data, cpu), cb);
+}
+
+static inline void waltgov_remove_callback(int cpu)
+{
+	rcu_assign_pointer(per_cpu(waltgov_cb_data, cpu), NULL);
+}
+
+static inline void waltgov_run_callback(struct rq *rq, unsigned int flags)
+{
+	struct waltgov_callback *cb;
+
+	cb = rcu_dereference_sched(*per_cpu_ptr(&waltgov_cb_data, cpu_of(rq)));
+	if (cb)
+		cb->func(cb, walt_ktime_get_ns(), flags);
+}
+
 static inline void
 inc_nr_big_task(struct walt_sched_stats *stats, struct task_struct *p)
 {
