@@ -19,6 +19,7 @@
 
 #include <linux/kthread.h>
 #include <trace/events/power.h>
+#include <linux/sched/sysctl.h>
 
 #include "walt.h"
 //#include "trace.h"
@@ -61,6 +62,7 @@ struct waltgov_policy {
 	s64			down_rate_delay_ns;
 	unsigned int		next_freq;
 	unsigned int		cached_raw_freq;
+	unsigned int        prev_cached_raw_freq;
 
 	/* The next fields are only needed if fast switch cannot be used: */
 	struct	irq_work	irq_work;
@@ -137,17 +139,27 @@ static bool waltgov_update_next_freq(struct waltgov_policy *wg_policy, u64 time,
 					unsigned int next_freq,
 					unsigned int raw_freq)
 {
+    pr_walt("Update request: time=%llu next_freq=%u raw_freq=%u (current next_freq=%u)\n",
+            time, next_freq, raw_freq, wg_policy->next_freq);
+
 	if (wg_policy->next_freq == next_freq)
+        pr_walt("No update: next_freq unchanged (%u)\n", next_freq);
 		return false;
 
 	if (waltgov_up_down_rate_limit(wg_policy, time, next_freq)) {
+		pr_walt("[WALT] Rate limit triggered for freq=%u at time=%llu\n", next_freq, time);
 		wg_policy->cached_raw_freq = 0;
 		return false;
+	} else {
+    pr_walt("[WALT] Rate limit passed for freq=%u at time=%llu\n", next_freq, time);
 	}
 
 	wg_policy->cached_raw_freq = raw_freq;
 	wg_policy->next_freq = next_freq;
 	wg_policy->last_freq_update_time = time;
+
+    pr_walt("[WALT] Updated: next_freq=%u, raw_freq=%u, time=%llu\n",
+            next_freq, raw_freq, time);
 
 	return true;
 }
@@ -258,9 +270,11 @@ static unsigned int get_next_freq(struct waltgov_policy *wg_policy,
 	}
 
 	if (wg_policy->cached_raw_freq && freq == wg_policy->cached_raw_freq &&
-		!wg_policy->need_freq_update)
+		!wg_policy->need_freq_update) {
+		waltgov_update_next_freq(wg_policy, time, freq, freq);
 		pr_walt("Frequency unchanged, skipping update\n");
 		return 0;
+	}
 
 	wg_policy->need_freq_update = false;
 
@@ -959,6 +973,7 @@ static int waltgov_start(struct cpufreq_policy *policy)
 	wg_policy->limits_changed		= false;
 	wg_policy->need_freq_update		= false;
 	wg_policy->cached_raw_freq		= 0;
+	wg_policy->prev_cached_raw_freq         = 0;
 
 	for_each_cpu(cpu, policy->cpus) {
 		struct waltgov_cpu *wg_cpu = &per_cpu(waltgov_cpu, cpu);
@@ -1030,12 +1045,13 @@ static void waltgov_limits(struct cpufreq_policy *policy)
 
 static struct cpufreq_governor walt_gov = {
 	.name			= "walt",
+	.owner			= THIS_MODULE,
+	.dynamic_switching	= true,
 	.init			= waltgov_init,
 	.exit			= waltgov_exit,
 	.start			= waltgov_start,
 	.stop			= waltgov_stop,
 	.limits			= waltgov_limits,
-	.owner			= THIS_MODULE,
 };
 
 #ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_WALT
