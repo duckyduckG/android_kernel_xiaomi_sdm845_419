@@ -1007,7 +1007,7 @@ static struct cpufreq_governor walt_gov = {
 	.owner			= THIS_MODULE,
 };
 
-#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_SCHEDUTIL
+#ifdef CONFIG_CPU_FREQ_DEFAULT_GOV_WALT
 struct cpufreq_governor *cpufreq_default_governor(void)
 {
        return &walt_gov;
