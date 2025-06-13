@@ -171,6 +171,15 @@ config CPU_THERMAL
 
 	  If you want this support, you should say Y here.
 
+config THERMAL_ENGINE_THROTTLE
+	bool "Qcom thermal engine throttle support"
+	depends on CPU_FREQ
+	depends on THERMAL_OF
+	help
+	  This implements qcom thermal-engine thermal framework support.
+
+	  If you want this support, you should say Y here.
+
 config CLOCK_THERMAL
 	bool "Generic clock cooling support"
 	depends on COMMON_CLK
