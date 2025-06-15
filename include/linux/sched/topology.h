@@ -234,7 +234,16 @@ unsigned long arch_scale_cpu_capacity(void __always_unused *sd, int cpu)
 }
 #endif
 
+<<<<<<< HEAD
 #endif	/* !CONFIG_SMP */
+=======
+#ifndef arch_set_thermal_pressure
+static __always_inline
+void arch_set_thermal_pressure(const struct cpumask *cpus,
+			       unsigned long th_pressure)
+{ }
+#endif
+>>>>>>> 3679e909d194 (arch: arm64: Implement arch_scale_thermal_pressure() and arch_set_thermal_pressure())
 
 static inline int task_node(const struct task_struct *p)
 {
