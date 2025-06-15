@@ -188,8 +188,12 @@ static unsigned long limits_mitigation_notify(struct limits_dcvs_hw *hw)
 =======
 	/* FIXME OR REMOVE */
 	/* sched_update_cpu_freq_min_max(&hw->core_map, 0, max_limit); */
+<<<<<<< HEAD
 	arch_set_max_thermal_scale(&hw->core_map, max_limit);
 >>>>>>> 936a08e546c6 (drivers: qcom-cpufreq-hw: Implement arch_set_thermal_pressure)
+=======
+	arch_set_thermal_pressure(&hw->core_map, max_limit);
+>>>>>>> ba6f1bfe5616 (drivers: thermal: msm_lmh: use arch_set_thermal_pressure)
 	pr_debug("CPU:%d max limit:%lu\n", cpumask_first(&hw->core_map),
 			max_limit);
 	trace_lmh_dcvs_freq(cpumask_first(&hw->core_map), max_limit);
