@@ -981,7 +981,11 @@ static const struct adc_channels adc_chans_rev2[ADC_MAX_CHANNEL] = {
 					SCALE_HW_CALIB_PMIC_THERM)
 	[ADC_AMUX_THM1_PU2]	= ADC_CHAN_TEMP("amux_thm1_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
+	[ADC_AMUX_THM2_PU2]	= ADC_CHAN_TEMP("amux_thm2_pu2", 1,
+					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC_AMUX_THM3_PU2]	= ADC_CHAN_TEMP("amux_thm3_pu2", 1,
+					SCALE_HW_CALIB_THERM_100K_PULLUP)
+	[ADC_AMUX_THM4_PU2]	= ADC_CHAN_TEMP("amux_thm4_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ADC_AMUX_THM5_PU2]	= ADC_CHAN_TEMP("amux_thm5_pu2", 1,
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
@@ -989,6 +993,8 @@ static const struct adc_channels adc_chans_rev2[ADC_MAX_CHANNEL] = {
 					SCALE_HW_CALIB_THERM_100K_PULLUP)
 	[ANA_IN]		= ADC_CHAN_TEMP("drax_temp", 1,
 					SCALE_HW_CALIB_PMIC_THERM)
+	[ADC_GPIO1_PU2]	= ADC_CHAN_TEMP("gpio1_pu2", 1,
+					SCALE_HW_CALIB_THERM_100K_PULLUP)
 };
 
 static int adc_get_dt_channel_data(struct adc_chip *adc,
