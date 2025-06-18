@@ -151,7 +151,7 @@ static int bt_vreg_enable(struct bt_power_vreg_data *vreg)
 		vreg->is_enabled = true;
 	}
 
-	BT_PWR_ERR("vreg_en successful for : %s", vreg->name);
+	BT_PWR_INFO("vreg_en successful for : %s", vreg->name);
 out:
 	return rc;
 }
