@@ -14,6 +14,7 @@
 #include <linux/sde_rsc.h>
 #include <linux/platform_device.h>
 #include <linux/soc/qcom/llcc-qcom.h>
+#include <../debug.h>
 
 #include "msm_prop.h"
 
@@ -241,7 +242,7 @@ static void _sde_core_perf_calc_crtc(struct sde_kms *kms,
 			perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_EBI],
 			perf->core_clk_rate);
 
-	SDE_DEBUG(
+	SDEBER_LOG(
 		"crtc=%d clk_rate=%llu core_ib=%llu core_ab=%llu llcc_ib=%llu llcc_ab=%llu mem_ib=%llu mem_ab=%llu\n",
 			crtc->base.id, perf->core_clk_rate,
 			perf->max_per_pipe_ib[SDE_POWER_HANDLE_DBUS_ID_MNOC],
@@ -308,19 +309,19 @@ int sde_core_perf_crtc_check(struct drm_crtc *crtc,
 
 		/* convert bandwidth to kb */
 		bw = DIV_ROUND_UP_ULL(bw_sum_of_intfs, 1000);
-		SDE_DEBUG("calculated bandwidth=%uk\n", bw);
+		SDEBER_LOG("calculated bandwidth=%uk\n", bw);
 
 		threshold = kms->catalog->perf.max_bw_high;
 
-		SDE_DEBUG("final threshold bw limit = %d\n", threshold);
+		SDEBER_LOG("final threshold bw limit = %d\n", threshold);
 
 		if (!sde_cstate->bw_control) {
-			SDE_DEBUG("bypass bandwidth check\n");
+			SDEBER_LOG("bypass bandwidth check\n");
 		} else if (!threshold) {
-			SDE_ERROR("no bandwidth limits specified\n");
+			SDEBER_LOG("no bandwidth limits specified\n");
 			return -E2BIG;
 		} else if (bw > threshold) {
-			SDE_ERROR("exceeds bandwidth: %ukb > %ukb\n", bw,
+			SDEBER_LOG("exceeds bandwidth: %ukb > %ukb\n", bw,
 					threshold);
 			return -E2BIG;
 		}
@@ -1119,7 +1120,7 @@ static ssize_t _sde_core_perf_mode_write(struct file *file,
 		return -EFAULT;
 
 	if (perf_mode == SDE_PERF_MODE_FIXED) {
-		DRM_INFO("fix performance mode\n");
+		SDEBER_LOG("fix performance mode\n");
 	} else if (perf_mode == SDE_PERF_MODE_MINIMUM) {
 		/* run the driver with max clk and BW vote */
 		perf->perf_tune.min_core_clk = perf->max_core_clk_rate;
@@ -1129,7 +1130,7 @@ static ssize_t _sde_core_perf_mode_write(struct file *file,
 		ret = sde_power_clk_set_rate(perf->phandle,
 				perf->clk_name, perf->max_core_clk_rate);
 		if (ret) {
-			SDE_ERROR("failed to set %s clock rate %llu\n",
+			SDEBER_LOG("failed to set %s clock rate %llu\n",
 					perf->clk_name,
 					perf->max_core_clk_rate);
 
@@ -1137,14 +1138,14 @@ static ssize_t _sde_core_perf_mode_write(struct file *file,
 			perf->perf_tune.min_bus_vote = 0;
 			perf_mode = SDE_PERF_MODE_NORMAL;
 		} else {
-			DRM_INFO("minimum performance mode\n");
+			SDEBER_LOG("minimum performance mode\n");
 		}
 		SDE_EVT32(perf->max_core_clk_rate, ret);
 	} else if (perf_mode == SDE_PERF_MODE_NORMAL) {
 		/* reset the perf tune params to 0 */
 		perf->perf_tune.min_core_clk = 0;
 		perf->perf_tune.min_bus_vote = 0;
-		DRM_INFO("normal performance mode\n");
+		SDEBER_LOG("normal performance mode\n");
 	}
 	perf->perf_tune.mode = perf_mode;
 	perf->perf_tune.mode_changed = true;
