@@ -15,8 +15,50 @@
 #include <linux/clk-provider.h>
 #include <linux/regmap.h>
 #include <linux/mfd/syscon.h>
+#include <linux/msm-bus.h>
+#include <dt-bindings/msm/msm-bus-ids.h>
 
 #include "clk-debug.h"
+
+#define MSM_BUS_VECTOR(_src, _dst, _ab, _ib)	\
+{						\
+	.src = _src,				\
+	.dst = _dst,				\
+	.ab = _ab,				\
+	.ib = _ib,				\
+}
+
+static struct msm_bus_vectors clk_measure_vectors[] = {
+	MSM_BUS_VECTOR(MSM_BUS_MASTER_AMPSS_M0,
+			MSM_BUS_SLAVE_CAMERA_CFG, 0, 0),
+	MSM_BUS_VECTOR(MSM_BUS_MASTER_AMPSS_M0,
+			MSM_BUS_SLAVE_VENUS_CFG, 0, 0),
+	MSM_BUS_VECTOR(MSM_BUS_MASTER_AMPSS_M0,
+			MSM_BUS_SLAVE_DISPLAY_CFG, 0, 0),
+	MSM_BUS_VECTOR(MSM_BUS_MASTER_AMPSS_M0,
+			MSM_BUS_SLAVE_CAMERA_CFG, 0, 1),
+	MSM_BUS_VECTOR(MSM_BUS_MASTER_AMPSS_M0,
+			MSM_BUS_SLAVE_VENUS_CFG, 0, 1),
+	MSM_BUS_VECTOR(MSM_BUS_MASTER_AMPSS_M0,
+			MSM_BUS_SLAVE_DISPLAY_CFG, 0, 1),
+};
+
+static struct msm_bus_paths clk_measure_usecases[] = {
+	{
+		.num_paths = 3,
+		.vectors = &clk_measure_vectors[0],
+	},
+	{
+		.num_paths = 3,
+		.vectors = &clk_measure_vectors[3],
+	}
+};
+
+static struct msm_bus_scale_pdata clk_measure_scale_table = {
+	.usecase = clk_measure_usecases,
+	.num_usecases = ARRAY_SIZE(clk_measure_usecases),
+	.name = "clk_measure",
+};
 
 static struct measure_clk_data debug_mux_priv = {
 	.ctl_reg = 0x62024,
@@ -790,6 +832,7 @@ static const struct of_device_id clk_debug_match_table[] = {
 	{}
 };
 
+#define GCC_REGMAP(_mux, _index) ((struct regmap **)(_mux)->regmap)[_index]
 static int clk_debug_845_probe(struct platform_device *pdev)
 {
 	struct clk *clk;
@@ -822,64 +865,70 @@ static int clk_debug_845_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	if (of_get_property(pdev->dev.of_node, "qcom,gcc", NULL)) {
-		gcc_debug_mux.regmap[GCC] =
+		GCC_REGMAP(&gcc_debug_mux, GCC) =
 			syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					"qcom,gcc");
-		if (IS_ERR(gcc_debug_mux.regmap[GCC])) {
+		if (IS_ERR(GCC_REGMAP(&gcc_debug_mux, GCC))) {
 			pr_err("Failed to map qcom,gcc\n");
-			return PTR_ERR(gcc_debug_mux.regmap[GCC]);
+			return PTR_ERR(GCC_REGMAP(&gcc_debug_mux, GCC));
 		}
 	}
 
 	if (of_get_property(pdev->dev.of_node, "qcom,dispcc", NULL)) {
-		gcc_debug_mux.regmap[DISP_CC] =
+		GCC_REGMAP(&gcc_debug_mux, DISP_CC) =
 			syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					"qcom,dispcc");
-		if (IS_ERR(gcc_debug_mux.regmap[DISP_CC])) {
+		if (IS_ERR(GCC_REGMAP(&gcc_debug_mux, DISP_CC))) {
 			pr_err("Failed to map qcom,dispcc\n");
-			return PTR_ERR(gcc_debug_mux.regmap[DISP_CC]);
+			return PTR_ERR(GCC_REGMAP(&gcc_debug_mux, DISP_CC));
 		}
 	}
 
 	if (of_get_property(pdev->dev.of_node, "qcom,videocc", NULL)) {
-		gcc_debug_mux.regmap[VIDEO_CC] =
+		GCC_REGMAP(&gcc_debug_mux, VIDEO_CC) =
 			syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					"qcom,videocc");
-		if (IS_ERR(gcc_debug_mux.regmap[VIDEO_CC])) {
+		if (IS_ERR(GCC_REGMAP(&gcc_debug_mux, VIDEO_CC))) {
 			pr_err("Failed to map qcom,videocc\n");
-			return PTR_ERR(gcc_debug_mux.regmap[VIDEO_CC]);
+			return PTR_ERR(GCC_REGMAP(&gcc_debug_mux, VIDEO_CC));
 		}
 	}
 
 	if (of_get_property(pdev->dev.of_node, "qcom,camcc", NULL)) {
-		gcc_debug_mux.regmap[CAM_CC] =
+		GCC_REGMAP(&gcc_debug_mux, CAM_CC) =
 			syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					"qcom,camcc");
-		if (IS_ERR(gcc_debug_mux.regmap[CAM_CC])) {
+		if (IS_ERR(GCC_REGMAP(&gcc_debug_mux, CAM_CC))) {
 			pr_err("Failed to map qcom,camcc\n");
-			return PTR_ERR(gcc_debug_mux.regmap[CAM_CC]);
+			return PTR_ERR(GCC_REGMAP(&gcc_debug_mux, CAM_CC));
 		}
 	}
 
 	if (of_get_property(pdev->dev.of_node, "qcom,gpucc", NULL)) {
-		gcc_debug_mux.regmap[GPU_CC] =
+		GCC_REGMAP(&gcc_debug_mux, GPU_CC) =
 			syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					"qcom,gpucc");
-		if (IS_ERR(gcc_debug_mux.regmap[GPU_CC])) {
+		if (IS_ERR(GCC_REGMAP(&gcc_debug_mux, GPU_CC))) {
 			pr_err("Failed to map qcom,gpucc\n");
-			return PTR_ERR(gcc_debug_mux.regmap[GPU_CC]);
+			return PTR_ERR(GCC_REGMAP(&gcc_debug_mux, GPU_CC));
 		}
 	}
 
 	if (of_get_property(pdev->dev.of_node, "qcom,cpucc", NULL)) {
-		gcc_debug_mux.regmap[CPU] =
+		GCC_REGMAP(&gcc_debug_mux, CPU) =
 			syscon_regmap_lookup_by_phandle(pdev->dev.of_node,
 					"qcom,cpucc");
-		if (IS_ERR(gcc_debug_mux.regmap[CPU])) {
+		if (IS_ERR(GCC_REGMAP(&gcc_debug_mux, CPU))) {
 			pr_err("Failed to map qcom,cpucc\n");
-			return PTR_ERR(gcc_debug_mux.regmap[CPU]);
+			return PTR_ERR(GCC_REGMAP(&gcc_debug_mux, CPU));
 		}
 	}
+
+	gcc_debug_mux.bus_cl_id =
+		msm_bus_scale_register_client(&clk_measure_scale_table);
+
+	if (!gcc_debug_mux.bus_cl_id)
+		return -EPROBE_DEFER;
 
 	clk = devm_clk_register(&pdev->dev, &gcc_debug_mux.hw);
 	if (IS_ERR(clk)) {
