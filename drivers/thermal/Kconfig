@@ -175,6 +175,7 @@ config THERMAL_ENGINE_THROTTLE
 	bool "Qcom thermal engine throttle support"
 	depends on CPU_FREQ
 	depends on THERMAL_OF
+	depends on ARM_QCOM_CPUFREQ_HW
 	help
 	  This implements qcom thermal-engine thermal framework support.
 
