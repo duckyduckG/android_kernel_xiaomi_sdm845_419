@@ -99,9 +99,9 @@ struct ps_calibration_data {
 #define DS_BUTTONS2_TOUCHPAD	BIT(1)
 #define DS_BUTTONS2_MIC_MUTE	BIT(2)
 
-/* Status field of DualSense input report. */
-#define DS_STATUS_BATTERY_CAPACITY		GENMASK(3, 0)
-#define DS_STATUS_CHARGING			GENMASK(7, 4)
+/* Battery status field of DualSense input report. */
+#define DS_STATUS0_BATTERY_CAPACITY		GENMASK(3, 0)
+#define DS_STATUS0_CHARGING			GENMASK(7, 4)
 
 /* Feature version from DualSense Firmware Info report. */
 #define DS_FEATURE_VERSION_MINOR		GENMASK(7, 0)
@@ -220,8 +220,8 @@ struct dualsense_input_report {
 	struct dualsense_touch_point points[2];
 
 	uint8_t reserved3[12];
-	uint8_t status;
-	uint8_t reserved4[10];
+	uint8_t status[3];
+	uint8_t reserved4[8];
 } __packed;
 
 /* Common data between DualSense BT/USB main output report. */
@@ -1313,8 +1313,8 @@ static int dualsense_parse_report(struct ps_device *ps_dev, struct hid_report *r
 	input_report_key(ds->touchpad, BTN_LEFT, ds_report->buttons[2] & DS_BUTTONS2_TOUCHPAD);
 	input_sync(ds->touchpad);
 
-	battery_data = FIELD_GET(DS_STATUS_BATTERY_CAPACITY, ds_report->status);
-	charging_status = FIELD_GET(DS_STATUS_CHARGING, ds_report->status);
+	battery_data = FIELD_GET(DS_STATUS0_BATTERY_CAPACITY, ds_report->status[0]);
+	charging_status = FIELD_GET(DS_STATUS0_CHARGING, ds_report->status[0]);
 
 	switch (charging_status) {
 	case 0x0:
