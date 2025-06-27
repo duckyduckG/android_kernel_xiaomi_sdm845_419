@@ -2016,13 +2016,18 @@ int smblib_vbus_regulator_is_enabled(struct regulator_dev *rdev)
 int smblib_get_prop_input_suspend(struct smb_charger *chg,
 				  union power_supply_propval *val)
 {
-	if ((get_client_vote(chg->chg_disable_votable, BYPASS_VOTER) == 1)) {
-        	val->intval = 1;
-        } else if (bypass_charging) {
-        	val->intval = 2;
-        } else {
-        	val->intval = 0;
-        }
+	bool suspended = get_client_vote(chg->usb_icl_votable, USER_VOTER);
+	bool bypassed = bypass_charging;
+
+	if (suspended)
+		val->intval = 1;
+	else if (bypassed)
+		val->intval = 2;
+	else
+		val->intval = 0;
+
+	pr_info("%s: returning input_suspend=%d (suspended=%d, bypass=%d)\n",
+		__func__, val->intval, suspended, bypassed);
 
 	return 0;
 }
@@ -2388,15 +2393,22 @@ int smblib_set_prop_input_suspend(struct smb_charger *chg,
 
 	/* vote 0mA when suspended */
 	if (val->intval == 1) {
-        	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 1, 0);
-        	bypass_charging = 0;
-     	} else if (val->intval == 2) {
-        	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-        	bypass_charging = 1;
-     	} else {
-        	rc = vote(chg->chg_disable_votable, BYPASS_VOTER, 0, 0);
-        	bypass_charging = 0;
-        }
+		pr_info("%s: input_suspend = 1 (Unplug: vote 0mA)\n", __func__);
+		rc = vote(chg->usb_icl_votable, USER_VOTER, true, 0);
+		bypass_charging = 0;
+
+	} else if (val->intval == 2) {
+		pr_info("%s: input_suspend = 2 (Bypass charging mode)\n", __func__);
+		vote(chg->usb_icl_votable, USER_VOTER, false, 0);
+		rc = vote(chg->chg_disable_votable, BYPASS_VOTER, false, 0);
+		bypass_charging = 1;
+
+	} else {
+		pr_info("%s: input_suspend = 0 (Normal mode)\n", __func__);
+		rc = vote(chg->usb_icl_votable, USER_VOTER, false, 0);
+		vote(chg->chg_disable_votable, BYPASS_VOTER, false, 0);
+		bypass_charging = 0;
+	}
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't vote to %s USB rc=%d\n",
 			(bool)val->intval ? "suspend" : "resume", rc);
