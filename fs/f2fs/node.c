@@ -51,72 +51,89 @@ bool f2fs_available_free_memory(struct f2fs_sb_info *sbi, int type)
 	unsigned long mem_size = 0;
 	bool res = false;
 
-	if (!nm_i)
+	if (!nm_i) {
+		pr_err("F2FS: nm_i is NULL\n");
 		return true;
+	}
 
 	si_meminfo(&val);
-
-	/* only uses low memory */
 	avail_ram = val.totalram - val.totalhigh;
 
-	/*
-	 * give 25%, 25%, 50%, 50%, 25%, 25% memory for each components respectively
-	 */
-	if (type == FREE_NIDS) {
-		mem_size = (nm_i->nid_cnt[FREE_NID] *
-				sizeof(struct free_nid)) >> PAGE_SHIFT;
+	switch (type) {
+	case FREE_NIDS:
+		mem_size = (nm_i->nid_cnt[FREE_NID] * sizeof(struct free_nid)) >> PAGE_SHIFT;
 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 2);
-	} else if (type == NAT_ENTRIES) {
-		mem_size = (nm_i->nat_cnt[TOTAL_NAT] *
-				sizeof(struct nat_entry)) >> PAGE_SHIFT;
+		pr_info("F2FS: FREE_NIDS mem_size=%lu pages, res=%d\n", mem_size, res);
+		break;
+
+	case NAT_ENTRIES:
+		mem_size = (nm_i->nat_cnt[TOTAL_NAT] * sizeof(struct nat_entry)) >> PAGE_SHIFT;
 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 2);
 		if (excess_cached_nats(sbi))
 			res = false;
-	} else if (type == DIRTY_DENTS) {
+		pr_info("F2FS: NAT_ENTRIES mem_size=%lu pages, res=%d\n", mem_size, res);
+		break;
+
+	case DIRTY_DENTS:
 		if (sbi->sb->s_bdi->wb.dirty_exceeded)
 			return false;
 		mem_size = get_pages(sbi, F2FS_DIRTY_DENTS);
 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 1);
-	} else if (type == INO_ENTRIES) {
-		int i;
+		pr_info("F2FS: DIRTY_DENTS mem_size=%lu pages, res=%d\n", mem_size, res);
+		break;
 
+	case INO_ENTRIES: {
+		int i;
 		for (i = 0; i < MAX_INO_ENTRY; i++)
-			mem_size += sbi->im[i].ino_num *
-						sizeof(struct ino_entry);
+			mem_size += sbi->im[i].ino_num * sizeof(struct ino_entry);
 		mem_size >>= PAGE_SHIFT;
 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 1);
-	} else if (type == READ_EXTENT_CACHE || type == AGE_EXTENT_CACHE) {
-		enum extent_type etype = type == READ_EXTENT_CACHE ?
-						EX_READ : EX_BLOCK_AGE;
+		pr_info("F2FS: INO_ENTRIES mem_size=%lu pages, res=%d\n", mem_size, res);
+		break;
+	}
+
+	case READ_EXTENT_CACHE:
+	case AGE_EXTENT_CACHE: {
+		enum extent_type etype = type == READ_EXTENT_CACHE ? EX_READ : EX_BLOCK_AGE;
 		struct extent_tree_info *eti = &sbi->extent_tree[etype];
 
-		mem_size = (atomic_read(&eti->total_ext_tree) *
-				sizeof(struct extent_tree) +
-				atomic_read(&eti->total_ext_node) *
-				sizeof(struct extent_node)) >> PAGE_SHIFT;
+		mem_size = (atomic_read(&eti->total_ext_tree) * sizeof(struct extent_tree) +
+		            atomic_read(&eti->total_ext_node) * sizeof(struct extent_node)) >> PAGE_SHIFT;
 		res = mem_size < ((avail_ram * nm_i->ram_thresh / 100) >> 2);
-	} else if (type == DISCARD_CACHE) {
-		mem_size = (atomic_read(&dcc->discard_cmd_cnt) *
-				sizeof(struct discard_cmd)) >> PAGE_SHIFT;
-		res = mem_size < (avail_ram * nm_i->ram_thresh / 100);
-	} else if (type == COMPRESS_PAGE) {
-#ifdef CONFIG_F2FS_FS_COMPRESSION
-		unsigned long free_ram = val.freeram;
+		pr_info("F2FS: EXTENT_CACHE (type=%d) mem_size=%lu pages, res=%d\n", type, mem_size, res);
+		break;
+	}
 
-		/*
-		 * free memory is lower than watermark or cached page count
-		 * exceed threshold, deny caching compress page.
-		 */
+	case DISCARD_CACHE:
+		if (!dcc) {
+			pr_err("F2FS: dcc_info is NULL in f2fs_available_free_memory\n");
+			return true;
+		}
+		mem_size = (atomic_read(&dcc->discard_cmd_cnt) * sizeof(struct discard_cmd)) >> PAGE_SHIFT;
+		res = mem_size < (avail_ram * nm_i->ram_thresh / 100);
+		pr_info("F2FS: DISCARD_CACHE mem_size=%lu pages, res=%d\n", mem_size, res);
+		break;
+
+	case COMPRESS_PAGE:
+#ifdef CONFIG_F2FS_FS_COMPRESSION
+	{
+		unsigned long free_ram = val.freeram;
 		res = (free_ram > avail_ram * sbi->compress_watermark / 100) &&
-			(COMPRESS_MAPPING(sbi)->nrpages <
-			 free_ram * sbi->compress_percent / 100);
+		      (COMPRESS_MAPPING(sbi)->nrpages < free_ram * sbi->compress_percent / 100);
+		pr_info("F2FS: COMPRESS_PAGE res=%d\n", res);
+		break;
+	}
 #else
 		res = false;
 #endif
-	} else {
+		break;
+
+	default:
 		if (!sbi->sb->s_bdi->wb.dirty_exceeded)
 			return true;
+		break;
 	}
+
 	return res;
 }
 

@@ -488,9 +488,12 @@ void f2fs_balance_fs_bg(struct f2fs_sb_info *sbi, bool from_bg)
 		return;
 
 do_sync:
+	pr_warn("F2FS: Triggering background checkpoint due to memory pressure or thresholds.");
+
 	if (test_opt(sbi, DATA_FLUSH) && from_bg) {
 		struct blk_plug plug;
 
+		pr_info("F2FS: Starting data flush from background thread");
 		mutex_lock(&sbi->flush_lock);
 
 		blk_start_plug(&plug);
@@ -499,6 +502,8 @@ do_sync:
 
 		mutex_unlock(&sbi->flush_lock);
 	}
+
+	pr_info("F2FS: Calling f2fs_sync_fs()");
 	f2fs_sync_fs(sbi->sb, 1);
 	stat_inc_bg_cp_count(sbi->stat_info);
 }
