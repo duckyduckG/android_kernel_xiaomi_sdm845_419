@@ -43,6 +43,7 @@ struct ps_device {
 	uint32_t fw_version;
 
 	int (*parse_report)(struct ps_device *dev, struct hid_report *report, u8 *data, int size);
+	void (*remove)(struct ps_device *dev);
 };
 
 /* Calibration data for playstation motion sensors. */
@@ -330,13 +331,15 @@ struct dualshock4_touch_point {
 	uint8_t x_hi:4, y_lo:4;
 	uint8_t y_hi;
 } __packed;
-static_assert(sizeof(struct dualshock4_touch_point) == 4);
+_Static_assert(sizeof(struct dualshock4_touch_point) == 4,
+				"dualshock4_touch_point size should be 4");
 
 struct dualshock4_touch_report {
 	uint8_t timestamp;
 	struct dualshock4_touch_point points[2];
 } __packed;
-static_assert(sizeof(struct dualshock4_touch_report) == 9);
+_Static_assert(sizeof(struct dualshock4_touch_report) == 9,
+				"dualshock4_touch_report size should be 9");
 
 /* Main DualShock4 input report excluding any BT/USB specific headers. */
 struct dualshock4_input_report_common {
@@ -390,7 +393,8 @@ struct dualshock4_output_report_usb {
 	struct dualshock4_output_report_common common;
 	uint8_t reserved[21];
 } __packed;
-static_assert(sizeof(struct dualshock4_output_report_usb) == DS4_OUTPUT_REPORT_USB_SIZE);
+_Static_assert(sizeof(struct dualshock4_output_report_usb) == DS4_OUTPUT_REPORT_USB_SIZE,
+				"dualshock4_output_report_usb size is wrong");
 
 /*
  * The DualShock4 has a main output report used to control most features. It is
