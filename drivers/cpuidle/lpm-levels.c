@@ -652,6 +652,9 @@ static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 {
 	uint64_t bias_time = 0;
 
+	if (suspend_in_progress)
+		return true;
+
 	if (cpu_isolated(cpu))
 		goto out;
 
