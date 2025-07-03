@@ -656,7 +656,7 @@ static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 		return true;
 
 	if (cpu_isolated(cpu))
-		goto out;
+		return false;
 
 	if (sleep_disabled || sleep_us < 0)
 		return true;
@@ -666,8 +666,6 @@ static inline bool lpm_disallowed(s64 sleep_us, int cpu, struct lpm_cpu *pm_cpu)
 		pm_cpu->bias = bias_time;
 		return true;
 	}
-
-out:
 
 	return false;
 }
