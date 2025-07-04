@@ -22,6 +22,7 @@
 // Backport
 #include <uapi/linux/uleds.h>
 #include <linux/property.h>
+#include <linux/of.h>
 
 DECLARE_RWSEM(leds_list_lock);
 EXPORT_SYMBOL_GPL(leds_list_lock);
