@@ -33,6 +33,11 @@
 #include <linux/of.h>
 #include <asm/current.h>
 #include <linux/timer.h>
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#include <linux/io.h>
+#define JTAG_ID 0x786130
+#define HW_VERSION_OFFSET 28
+#endif
 
 #include "peripheral-loader.h"
 
@@ -949,9 +954,29 @@ void *__subsystem_get(const char *name, const char *fw_name)
 	int ret;
 	void *retval;
 	struct subsys_tracking *track;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	void __iomem *jtag_id_vir = NULL;
+	u32 jtag_id = 0;
+#endif
 
 	if (!name)
 		return NULL;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	//////// added by Yao
+        printk("debugging: __subsystem_get: %s\n", name);
+	if (strcmp(name, "cdsp") == 0) {
+		jtag_id_vir = ioremap(JTAG_ID, 4);
+		jtag_id = readl_relaxed(jtag_id_vir);
+		iounmap(jtag_id_vir);
+                printk("debugging: Jtag ID is %x\n", jtag_id);
+		if (0x0 == (jtag_id >> HW_VERSION_OFFSET))
+		{
+			printk("we do not support cdsp for 845 v1.0!\n");
+			return NULL;
+		}
+	}
+	/////end of addition
+#endif
 
 	subsys = retval = find_subsys_device(name);
 	if (!subsys)
