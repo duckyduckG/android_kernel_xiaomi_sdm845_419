@@ -1543,10 +1543,15 @@ static void wcd_spi_component_unbind(struct device *dev,
 	spi_transfer_del(&wcd_spi->xfer2[0]);
 	spi_transfer_del(&wcd_spi->xfer2[1]);
 
+#ifdef CONFIG_ARCH_SDM845
+	kfree(wcd_spi->tx_buf);
+	kfree(wcd_spi->rx_buf);
+#else
 	dma_free_coherent(&spi->dev, WCD_SPI_RW_MAX_BUF_SIZE,
 			  wcd_spi->tx_buf, wcd_spi->tx_dma);
 	dma_free_coherent(&spi->dev, WCD_SPI_RW_MAX_BUF_SIZE,
 			  wcd_spi->rx_buf, wcd_spi->rx_dma);
+#endif
 	wcd_spi->tx_buf = NULL;
 	wcd_spi->rx_buf = NULL;
 }
