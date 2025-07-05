@@ -1488,20 +1488,34 @@ static int wcd_spi_component_bind(struct device *dev,
 
 	/* Pre-allocate the buffers */
 	/* FIXME */
+#ifdef CONFIG_ARCH_SDM845
+	wcd_spi->tx_buf = kzalloc(WCD_SPI_RW_MAX_BUF_SIZE,
+								GFP_KERNEL | GFP_DMA);
+#else
 	wcd_spi->tx_buf = dma_zalloc_coherent(&spi->dev,
 					      WCD_SPI_RW_MAX_BUF_SIZE,
 					      &wcd_spi->tx_dma, GFP_KERNEL);
+#endif
 	if (!wcd_spi->tx_buf) {
 		ret = -ENOMEM;
 		goto done;
 	}
 
+#ifdef CONFIG_ARCH_SDM845
+	wcd_spi->rx_buf = kzalloc(WCD_SPI_RW_MAX_BUF_SIZE,
+							GFP_KERNEL | GFP_DMA);
+#else
 	wcd_spi->rx_buf = dma_zalloc_coherent(&spi->dev,
 					      WCD_SPI_RW_MAX_BUF_SIZE,
 					      &wcd_spi->rx_dma, GFP_KERNEL);
+#endif
 	if (!wcd_spi->rx_buf) {
+#ifdef CONFIG_ARCH_SDM845
+		kfree(wcd_spi->tx_buf);
+#else
 		dma_free_coherent(&spi->dev, WCD_SPI_RW_MAX_BUF_SIZE,
 				  wcd_spi->tx_buf, wcd_spi->tx_dma);
+#endif
 		wcd_spi->tx_buf = NULL;
 		ret = -ENOMEM;
 		goto done;
