@@ -1706,8 +1706,16 @@ static void register_cluster_lpm_stats(struct lpm_cluster *cl,
 		register_cluster_lpm_stats(child, cl);
 }
 
+uint64_t enter_time;
+uint64_t total_suspend_time;
+
 static int lpm_suspend_prepare(void)
 {
+	struct timespec ts;
+
+	getnstimeofday(&ts);
+	enter_time = timespec_to_ns(&ts);
+
 	suspend_in_progress = true;
 	lpm_stats_suspend_enter();
 
@@ -1716,6 +1724,16 @@ static int lpm_suspend_prepare(void)
 
 static void lpm_suspend_wake(void)
 {
+	struct timespec ts;
+	uint64_t suspend_time = 0;
+	uint32_t ns;
+
+	getnstimeofday(&ts);
+	suspend_time = timespec_to_ns(&ts) - enter_time;
+	total_suspend_time += suspend_time;
+	ns = do_div(suspend_time, NSEC_PER_SEC);
+	pr_info("LPML: Suspended for %lld.%09u secs. total %lld secs.\n", suspend_time, ns, total_suspend_time/NSEC_PER_SEC);
+
 	suspend_in_progress = false;
 	lpm_stats_suspend_exit();
 }
@@ -1850,6 +1868,9 @@ static int lpm_probe(struct platform_device *pdev)
 	md_entry.id = MINIDUMP_DEFAULT_ID;
 	if (msm_minidump_add_region(&md_entry) < 0)
 		pr_info("Failed to add lpm_debug in Minidump\n");
+
+	enter_time = 0;
+	total_suspend_time = 0;
 
 	return 0;
 failed:
