@@ -1487,7 +1487,6 @@ static int wcd_spi_component_bind(struct device *dev,
 	spi_message_add_tail(&wcd_spi->xfer2[1], &wcd_spi->msg2);
 
 	/* Pre-allocate the buffers */
-	/* FIXME */
 #ifdef CONFIG_ARCH_SDM845
 	wcd_spi->tx_buf = kzalloc(WCD_SPI_RW_MAX_BUF_SIZE,
 								GFP_KERNEL | GFP_DMA);
@@ -1520,7 +1519,7 @@ static int wcd_spi_component_bind(struct device *dev,
 		ret = -ENOMEM;
 		goto done;
 	}
-	/* FIXME */
+
 done:
 	return ret;
 }
