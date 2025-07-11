@@ -19,8 +19,6 @@
 /*-*******************************************************
 *  Compiler specifics
 *********************************************************/
-/* force inlining */
-
 
 /* duckyduck: this should be added in include/linux/compiler_attributes.h, but
  * it is used by zstd only so keep it here.
@@ -41,6 +39,7 @@
 # define fallthrough                    do {} while (0)  /* fallthrough */
 #endif
 
+/* force inlining */
 #if !defined(ZSTD_NO_INLINE)
 #if (defined(__GNUC__) && !defined(__STRICT_ANSI__)) || defined(__cplusplus) || defined(__STDC_VERSION__) && __STDC_VERSION__ >= 199901L   /* C99 */
 #  define INLINE_KEYWORD inline
