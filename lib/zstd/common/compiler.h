@@ -21,7 +21,10 @@
 *********************************************************/
 /* force inlining */
 
-/*
+
+/* duckyduck: this should be added in include/linux/compiler_attributes.h, but
+ * it is used by zstd only so keep it here.
+ *
  * Add the pseudo keyword 'fallthrough' so case statement blocks
  * must end with any of these keywords:
  *   break;
