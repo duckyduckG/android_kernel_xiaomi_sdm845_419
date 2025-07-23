@@ -247,6 +247,7 @@ struct wled {
 	struct led_classdev flash_cdev;
 	struct led_classdev torch_cdev;
 	struct led_classdev switch_cdev;
+	struct led_classdev cdev;
 	struct wled_flash_config fparams;
 	struct wled_flash_config tparams;
 	spinlock_t flash_lock;
@@ -2110,6 +2111,38 @@ static int wled_flash_setup(struct wled *wled)
 
 	return 0;
 }
+
+int qpnp_wled_cabc(struct led_classdev *led_cdev, bool enable)
+{
+	struct wled *wled;
+	int rc = 0, i;
+	u8 reg = 0;
+
+	wled = container_of(led_cdev, struct wled, cdev);
+	if (wled == NULL) {
+		pr_err("wled is null\n");
+		return -EPERM;
+	}
+
+	mutex_lock(&wled->lock);
+	wled->cfg.en_cabc = enable;
+	for (i = 0; i < wled->num_strings; i++) {
+		/* CABC */
+		reg = enable ? WLED_SINK_CABC_EN : 0;
+		rc = regmap_update_bits(wled->regmap, wled->sink_addr +
+				WLED_SINK_CABC_REG(i),
+				WLED_SINK_CABC_MASK, reg);
+		if (rc < 0)
+			goto fail_cabc;
+
+		pr_debug("%d en_cabc %d\n", i, wled->cfg.en_cabc);
+	}
+
+fail_cabc:
+	mutex_unlock(&wled->lock);
+	return rc;
+}
+EXPORT_SYMBOL_GPL(qpnp_wled_cabc);
 
 static int wled_configure(struct wled *wled, struct device *dev)
 {
