@@ -419,6 +419,9 @@
 #define BTN_WHEEL		0x150
 #define BTN_GEAR_DOWN		0x150
 #define BTN_GEAR_UP		0x151
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define BTN_INFO		0x152
+#endif
 
 #define KEY_OK			0x160
 #define KEY_SELECT		0x161
@@ -642,6 +645,14 @@
 #define KEY_UNMUTE			0x274
 #define KEY_FASTREVERSE			0x275
 #define KEY_SLOWREVERSE			0x276
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+/*
+ * AI KEY
+ */
+#define KEY_AI			        0x2b1
+#endif
+
 /*
  * Control a data application associated with the currently viewed channel,
  * e.g. teletext or data broadcast application (MHEG, MHP, HbbTV, etc.)
