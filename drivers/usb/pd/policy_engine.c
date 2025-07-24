@@ -354,11 +354,6 @@ static void *usbpd_ipc_log;
 
 #define PD_MIN_SINK_CURRENT	900
 
-#define PD_VBUS_MAX_VOLTAGE_LIMIT 9000000
-
-/* add for limit APDO voltage to maxium 5800mV for better efficiency */
-#define MAX_ALLOWED_APDO_UV	5800000
-
 static const u32 default_src_caps[] = { 0x36019096 };	/* VSafe5V @ 1.5A */
 static const u32 default_snk_caps[] = { 0x2601912C };	/* VSafe5V @ 3A */
 
@@ -382,13 +377,18 @@ struct rx_msg {
 #define IS_EXT(m, t) ((m) && PD_MSG_HDR_IS_EXTENDED((m)->hdr) && \
 		(PD_MSG_HDR_TYPE((m)->hdr) == (t)))
 
+#define PD_VBUS_MAX_VOLTAGE_LIMIT 9000000
+
+/* add for limit APDO voltage to maxium 5800mV for better efficiency */
+#define MAX_ALLOWED_APDO_UV	5800000
+
 struct usbpd {
 	struct device		dev;
 	struct workqueue_struct	*wq;
 	struct work_struct	sm_work;
+	struct delayed_work	vbus_work;
 	struct work_struct	start_periph_work;
 	struct work_struct	restart_host_work;
-	struct delayed_work	vbus_work;
 	struct hrtimer		timer;
 	bool			sm_queued;
 
@@ -3898,7 +3898,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 
 	pd->typec_mode = typec_mode;
 
-	usbpd_dbg(&pd->dev, "typec mode:%d present:%d orientation:%d\n",
+	usbpd_info(&pd->dev, "typec mode:%d present:%d orientation:%d\n",
 			typec_mode, pd->vbus_present,
 			usbpd_get_plug_orientation(pd));
 
@@ -4857,9 +4857,9 @@ struct usbpd *usbpd_create(struct device *parent)
 		goto del_pd;
 	}
 	INIT_WORK(&pd->sm_work, usbpd_sm);
+	INIT_DELAYED_WORK(&pd->vbus_work,usbpd_vbus_sm);
 	INIT_WORK(&pd->start_periph_work, start_usb_peripheral_work);
 	INIT_WORK(&pd->restart_host_work, restart_usb_host_work);
-	INIT_DELAYED_WORK(&pd->vbus_work,usbpd_vbus_sm);
 	hrtimer_init(&pd->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	pd->timer.function = pd_timeout;
 	mutex_init(&pd->swap_lock);

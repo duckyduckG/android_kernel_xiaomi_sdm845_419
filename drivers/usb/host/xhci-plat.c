@@ -211,10 +211,6 @@ static int xhci_plat_probe(struct platform_device *pdev)
 		if (is_of_node(sysdev->fwnode) ||
 			is_acpi_device_node(sysdev->fwnode))
 			break;
-
-	if (sysdev->parent && !sysdev->of_node && sysdev->parent->of_node)
-		dwc =sysdev->parent;
-
 #ifdef CONFIG_PCI
 		else if (sysdev->bus == &pci_bus_type)
 			break;
@@ -223,6 +219,9 @@ static int xhci_plat_probe(struct platform_device *pdev)
 
 	if (!sysdev)
 		sysdev = &pdev->dev;
+
+	if (sysdev->parent && !sysdev->of_node && sysdev->parent->of_node)
+		dwc =sysdev->parent;
 
 	/*
 	 * If sysdev dev is having parent i.e. "linux,sysdev_is_parent" is true,

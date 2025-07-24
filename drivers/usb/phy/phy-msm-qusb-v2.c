@@ -169,9 +169,9 @@ struct qusb_phy {
 	struct dentry		*root;
 	u8			tune[5];
 	u8                      bias_ctrl2;
-
 	u8                      imp_ctrl;
 	u8                      pll_bias;
+
 	bool			override_bias_ctrl2;
 
 	struct hrtimer		timer;

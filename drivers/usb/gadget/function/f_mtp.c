@@ -1494,6 +1494,7 @@ mtp_function_unbind(struct usb_configuration *c, struct usb_function *f)
 	struct mtp_instance *fi_mtp;
 	struct usb_request *req;
 	int i;
+
 	fi_mtp = container_of(f->fi, struct mtp_instance, func_inst);
 	mtp_string_defs[INTERFACE_STRING_INDEX].id = 0;
 	mtp_log("dev: %pK\n", dev);
