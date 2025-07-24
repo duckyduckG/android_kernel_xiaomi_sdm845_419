@@ -399,18 +399,6 @@ void fg_notify_charger(struct fg_dev *fg)
 			return;
 		}
 	}
-
-	if (fg->bp.fastchg_curr_ma > 0) {
-		prop.intval = fg->bp.fastchg_curr_ma * 1000;
-		rc = power_supply_set_property(fg->batt_psy,
-				POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
-				&prop);
-		if (rc < 0) {
-			pr_err("Error in setting constant_charge_current_max property on batt_psy, rc=%d\n",
-				rc);
-			return;
-		}
-	}
 }
 
 bool batt_psy_initialized(struct fg_dev *fg)
@@ -909,13 +897,24 @@ int fg_get_msoc(struct fg_dev *fg, int *msoc)
 	 * of the values 1-254 will be scaled to 1-99. DIV_ROUND_UP will not
 	 * be suitable here as it rounds up any value higher than 252 to 100.
 	 */
-	if (*msoc == FULL_SOC_RAW)
+	if ((*msoc >= FULL_SOC_REPORT_THR - 2)
+			&& (*msoc < FULL_SOC_RAW) && fg->report_full) {
+		*msoc = DIV_ROUND_CLOSEST(*msoc * FULL_CAPACITY, FULL_SOC_RAW) + 1;
+		if (*msoc >= FULL_CAPACITY)
+			*msoc = FULL_CAPACITY;
+	} else if (*msoc == FULL_SOC_RAW)
 		*msoc = 100;
 	else if (*msoc == 0)
 		*msoc = 0;
+	else if (*msoc >= FULL_SOC_REPORT_THR - 4 && *msoc <= FULL_SOC_REPORT_THR - 3 && fg->report_full)
+	{
+		*msoc = DIV_ROUND_CLOSEST(*msoc * FULL_CAPACITY, FULL_SOC_RAW);
+	}
 	else
+	{
 		*msoc = DIV_ROUND_CLOSEST((*msoc - 1) * (FULL_CAPACITY - 2),
 				FULL_SOC_RAW - 2) + 1;
+	}
 	return 0;
 }
 
