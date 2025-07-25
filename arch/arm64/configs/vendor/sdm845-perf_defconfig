@@ -717,7 +717,7 @@ CONFIG_SPECTRA_CAMERA=y
 # disabled modules
 #
 # CONFIG_LCD_CLASS_DEVICE is not set
-CONFIG_USB_GSPCA=y
+# CONFIG_USB_GSPCA is not set
 # CONFIG_RMNET_PERF is not set
 # CONFIG_RMNET_SHS is not set
 
