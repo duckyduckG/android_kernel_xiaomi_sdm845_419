@@ -1732,7 +1732,7 @@ static void lpm_suspend_wake(void)
 	suspend_time = timespec_to_ns(&ts) - enter_time;
 	total_suspend_time += suspend_time;
 	ns = do_div(suspend_time, NSEC_PER_SEC);
-	pr_info("LPML: Suspended for %lld.%09u secs. total %lld secs.\n", suspend_time, ns, total_suspend_time/NSEC_PER_SEC);
+	pr_notice("SUSPENDDBG: LPML: Suspended for %lld.%09u secs. total %lld secs.\n", suspend_time, ns, total_suspend_time/NSEC_PER_SEC);
 
 	suspend_in_progress = false;
 	lpm_stats_suspend_exit();
