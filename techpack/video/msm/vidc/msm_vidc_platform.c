@@ -896,6 +896,73 @@ static struct msm_vidc_codec_capability kona_capabilities[] = {
 	                            V4L2_MPEG_VIDEO_HEVC_LEVEL_5},
 };
 
+static struct msm_vidc_codec_capability sdm845_capabilities[] = {
+	/* {cap_type, domains, codecs, min, max, step_size, default_value} */
+	{CAP_FRAME_WIDTH, DEC, CODECS_ALL, 128, 1920, 1, 1920},
+	{CAP_FRAME_HEIGHT, DEC, CODECS_ALL, 128, 1920, 1, 1080},
+	{CAP_FRAME_WIDTH, ENC, CODECS_ALL, 128, 1920, 2, 1920},
+	{CAP_FRAME_HEIGHT, ENC, CODECS_ALL, 128, 1920, 2, 1080},
+	/*  ((1920 * 1088) / 256) */
+	{CAP_MBS_PER_FRAME, DOMAINS_ALL, CODECS_ALL, 64, 8160, 1, 8160},
+	/* 1080@30 decode + 1080@30 encode */
+	{CAP_MBS_PER_SECOND, DOMAINS_ALL, CODECS_ALL, 64, 489600, 1, 244800},
+	{CAP_FRAMERATE, DOMAINS_ALL, CODECS_ALL, 1, 120, 1, 30},
+	{CAP_BITRATE, DOMAINS_ALL, CODECS_ALL, 1, 60000000, 1, 20000000},
+	{CAP_HIER_P_NUM_ENH_LAYERS, ENC, H264|HEVC, 0, 6, 1, 0},
+	{CAP_LTR_COUNT, ENC, H264|HEVC, 0, 4, 1, 0},
+	/* ((1920 * 1088) / 256) * 30 fps */
+	{CAP_MBS_PER_SECOND_POWER_SAVE, ENC, CODECS_ALL,
+		0, 244800, 1, 244800},
+	{CAP_CABAC_BITRATE, ENC, H264, 1, 60000000, 1, 20000000},
+	{CAP_I_FRAME_QP, ENC, H264|HEVC, 0, 51, 1, 10},
+	{CAP_P_FRAME_QP, ENC, H264|HEVC, 0, 51, 1, 20},
+	{CAP_B_FRAME_QP, ENC, H264|HEVC, 0, 51, 1, 20},
+
+	/* 10 slices */
+	{CAP_SLICE_BYTE, ENC, H264|HEVC, 1, 10, 1, 10},
+	{CAP_SLICE_MB, ENC, H264|HEVC, 1, 10, 1, 10},
+	{CAP_MAX_VIDEOCORES, DOMAINS_ALL, CODECS_ALL, 0, 1, 1, 1},
+
+	/* Secure usecase specific */
+	{CAP_SECURE_FRAME_WIDTH, DEC, CODECS_ALL, 128, 1920, 1, 1920},
+	{CAP_SECURE_FRAME_HEIGHT, DEC, CODECS_ALL, 128, 1920, 1, 1080},
+	{CAP_SECURE_FRAME_WIDTH, ENC, CODECS_ALL, 128, 1920, 2, 1920},
+	{CAP_SECURE_FRAME_HEIGHT, ENC, CODECS_ALL, 128, 1920, 2, 1080},
+	/* (1920 * 1088) / 256 */
+	{CAP_SECURE_MBS_PER_FRAME, DOMAINS_ALL, CODECS_ALL, 64, 8160, 1, 8160},
+	{CAP_SECURE_BITRATE, DOMAINS_ALL, CODECS_ALL, 1, 35000000, 1, 20000000},
+
+	/* All intra encoding usecase specific */
+	{CAP_ALLINTRA_MAX_FPS, ENC, H264|HEVC, 1, 60, 1, 30},
+
+	/* Image specific */
+	{CAP_HEVC_IMAGE_FRAME_WIDTH, ENC, HEVC, 128, 512, 2, 512},
+	{CAP_HEVC_IMAGE_FRAME_HEIGHT, ENC, HEVC, 128, 512, 2, 512},
+	{CAP_HEIC_IMAGE_FRAME_WIDTH, ENC, HEVC, 512, 8192, 2, 8192},
+	{CAP_HEIC_IMAGE_FRAME_HEIGHT, ENC, HEVC, 512, 8192, 2, 8192},
+
+	/* Level for AVC and HEVC encoder specific.
+	 * Default for levels is UNKNOWN value. But if we use unknown
+	 * value here to set as default, max value needs to be set to
+	 * unknown as well, which creates a problem of allowing client
+	 * to set higher level than supported
+	 */
+	{CAP_H264_LEVEL, ENC, H264, V4L2_MPEG_VIDEO_H264_LEVEL_1_0,
+				V4L2_MPEG_VIDEO_H264_LEVEL_5_0, 1,
+				V4L2_MPEG_VIDEO_H264_LEVEL_4_1},
+	{CAP_HEVC_LEVEL, ENC, HEVC, V4L2_MPEG_VIDEO_HEVC_LEVEL_1,
+				V4L2_MPEG_VIDEO_HEVC_LEVEL_5, 1,
+				V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1},
+
+	/* Level for AVC, HEVC and VP9 decoder specific */
+	{CAP_H264_LEVEL, DEC, H264, V4L2_MPEG_VIDEO_H264_LEVEL_1_0,
+				V4L2_MPEG_VIDEO_H264_LEVEL_5_0, 1,
+				V4L2_MPEG_VIDEO_H264_LEVEL_4_1},
+	{CAP_HEVC_LEVEL, DEC, HEVC, V4L2_MPEG_VIDEO_HEVC_LEVEL_1,
+				V4L2_MPEG_VIDEO_HEVC_LEVEL_5, 1,
+				V4L2_MPEG_VIDEO_HEVC_LEVEL_4_1},
+};
+
 /*
  * Custom conversion coefficients for resolution: 176x144 negative
  * coeffs are converted to s4.9 format
@@ -1693,6 +1760,10 @@ static struct msm_vidc_common_data sdm845_common_data[] = {
 		.value = 1,
 	},
 	{
+		.key = "qcom,fw-unload-delay",
+		.value = 1000,
+	},
+	{
 		.key = "qcom,sw-power-collapse",
 		.value = 1,
 	},
@@ -1711,6 +1782,14 @@ static struct msm_vidc_common_data sdm845_common_data[] = {
 	{
 		.key = "qcom,max-hw-load",
 		.value = 3133440,	/* 4096x2176@90 */
+	},
+	{
+		.key = "qcom,max-image-load",
+		.value = 262144, /* ((8192x8192)/256)@1fps */
+	},
+	{
+		.key = "qcom,max-mbpf",
+		.value = 65280,/* ((3840x2176)/256) x 2 */
 	},
 	{
 		.key = "qcom,max-hq-mbs-per-frame",
@@ -1741,8 +1820,32 @@ static struct msm_vidc_common_data sdm845_common_data[] = {
 		.value = 0,
 	},
 	{
+		.key = "qcom,decode-batching",
+		.value = 1,
+	},
+	{
+		.key = "qcom,batch-timeout",
+		.value = 200,
+	},
+	{
 		.key = "qcom,dcvs",
 		.value = 1,
+	},
+	{
+		.key = "qcom,fw-cycles",
+		.value = 760000,
+	},
+	{
+		.key = "qcom,fw-vpp-cycles",
+		.value = 166667,
+	},
+	{
+		.key = "qcom,ubwc_stats_in_fbd",
+		.value = 0,
+	},
+	{
+		.key = "qcom,vpp_delay_supported",
+		.value = 0,
 	},
 };
 
@@ -2035,6 +2138,10 @@ static struct msm_vidc_platform_data sdm845_data = {
 	.vpu_ver = VPU_VERSION_AR50,
 	.num_vpp_pipes = 0x1,
 	.ubwc_config = 0x0,
+	.codecs = default_codecs,
+	.codecs_count = ARRAY_SIZE(default_codecs),
+	.codec_caps = sdm845_capabilities,
+	.codec_caps_count = ARRAY_SIZE(sdm845_capabilities),
 	.max_inst_count = MAX_SUPPORTED_INSTANCES,
 };
 
