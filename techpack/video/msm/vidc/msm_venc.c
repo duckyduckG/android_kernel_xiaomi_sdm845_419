@@ -935,6 +935,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value = V4L2_MPEG_MSM_VIDC_DISABLE,
 		.step = 1,
 	},
+#ifdef VENC_BITRATE_SAVINGS_AVAILABLE
 	{
 		.id = V4L2_CID_MPEG_VIDC_VENC_BITRATE_SAVINGS,
 		.name = "Enable/Disable bitrate savings",
@@ -944,6 +945,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value = 3,
 		.step = 1,
 	},
+#endif
 	{
 		.id = V4L2_CID_MPEG_VIDEO_H264_CHROMA_QP_INDEX_OFFSET,
 		.name = "Chroma QP Index Offset",
@@ -989,6 +991,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		.default_value = (DEFAULT_FPS << 16),
 		.step = 1,
 	},
+#ifdef VENC_ROI_TYPE_AVAILABLE
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_ROI_TYPE,
 		.name = "ROI Type",
@@ -1003,6 +1006,7 @@ static struct msm_vidc_ctrl msm_venc_ctrls[] = {
 		),
 		.qmenu = roi_map_type,
 	},
+#endif
 	{
 		.id = V4L2_CID_MPEG_VIDC_ENABLE_ONLY_BASE_LAYER_IR,
 		.name = "Enable Only Base Layer IR",

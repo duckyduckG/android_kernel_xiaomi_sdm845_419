@@ -42,8 +42,10 @@ static const char *const vp9_level[] = {
 	"4.1",
 	"5.0",
 	"5.1",
+#ifdef VDEC_VP9_LEVEL61_AVAILABLE
 	"6.0",
 	"6.1",
+#endif
 	NULL
 };
 
@@ -264,9 +266,9 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_VP9_LEVEL,
 		.name = "VP9 Level",
 		.type = V4L2_CTRL_TYPE_MENU,
-		.minimum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_UNUSED,
-		.maximum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_61,
-		.default_value = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_61,
+		.minimum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51,
+		.maximum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51,
+		.default_value = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51,
 		.menu_skip_mask = ~(
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_UNUSED) |
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_1) |
@@ -278,9 +280,15 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_4) |
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_41) |
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_5) |
+#ifdef VDEC_VP9_LEVEL61_AVAILABLE
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51) |
+#else
+		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51)
+#endif
+#ifdef VDEC_VP9_LEVEL61_AVAILABLE
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_6) |
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_61)
+#endif
 		),
 		.qmenu = vp9_level,
 	},
@@ -987,8 +995,9 @@ int msm_vdec_set_color_format(struct msm_vidc_inst *inst)
 {
 	int rc = 0;
 	struct hfi_device *hdev;
+#ifdef VDEC_FORMAT_CONSTRAINTS_SUPPORTED
 	struct msm_vidc_format_constraint *fmt_constraint;
-
+#endif
 	if (!inst || !inst->core) {
 		d_vpr_e("%s: invalid params %pK\n", __func__, inst);
 		return -EINVAL;
@@ -1003,6 +1012,7 @@ int msm_vdec_set_color_format(struct msm_vidc_inst *inst)
 			__func__, inst->clk_data.opb_fourcc);
 		return rc;
 	}
+#ifdef VDEC_FORMAT_CONSTRAINTS_SUPPORTED
 	fmt_constraint = msm_comm_get_pixel_fmt_constraints(
 			dec_pix_format_constraints,
 			ARRAY_SIZE(dec_pix_format_constraints),
@@ -1018,7 +1028,7 @@ int msm_vdec_set_color_format(struct msm_vidc_inst *inst)
 			return rc;
 		}
 	}
-
+#endif
 	return rc;
 }
 
