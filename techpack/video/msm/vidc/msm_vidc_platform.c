@@ -2299,7 +2299,13 @@ void *vidc_get_drv_data(struct device *dev)
 			goto exit;
 	}
 
-	if (!strcmp(match->compatible, "qcom,sdm670-vidc")) {
+	if (!strcmp(match->compatible, "qcom,sdm845-vidc")) {
+		if (driver_data->sku_version == SKU_VERSION_1) {
+			driver_data->common_data = sdm845_common_data;
+			driver_data->common_data_length =
+					ARRAY_SIZE(sdm845_common_data);
+		}
+	} else if (!strcmp(match->compatible, "qcom,sdm670-vidc")) {
 		if (driver_data->sku_version == SKU_VERSION_1) {
 			driver_data->common_data = sdm670_common_data_v1;
 			driver_data->common_data_length =
