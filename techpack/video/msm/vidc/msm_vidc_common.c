@@ -3261,11 +3261,6 @@ static int msm_comm_session_init(int flipped_state,
 		s_vpr_e(inst->sid, "Failed to update capabilities\n");
 		goto exit;
 	}
-	rc = msm_vidc_calculate_buffer_counts(inst);
-	if (rc) {
-		s_vpr_e(inst->sid, "Failed to initialize buff counts\n");
-		goto exit;
-	}
 	change_inst_state(inst, MSM_VIDC_OPEN);
 
 exit:

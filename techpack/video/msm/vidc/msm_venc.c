@@ -1410,14 +1410,6 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 			inst->bit_depth = MSM_VIDC_BIT_DEPTH_10;
 		}
 
-		rc = msm_vidc_calculate_buffer_counts(inst);
-		if (rc) {
-			s_vpr_e(inst->sid,
-				"%s failed to calculate buffer count\n",
-				__func__);
-			return rc;
-		}
-
 		rc = msm_vidc_check_session_supported(inst);
 		if (rc) {
 			s_vpr_e(inst->sid,
@@ -1614,8 +1606,6 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		rc = msm_venc_resolve_rate_control(inst, ctrl);
 		if (rc)
 			s_vpr_e(sid, "%s: set bitrate mode failed\n", __func__);
-		if (inst->state < MSM_VIDC_LOAD_RESOURCES)
-			msm_vidc_calculate_buffer_counts(inst);
 		break;
 	}
 	case V4L2_CID_MPEG_VIDEO_BITRATE:
@@ -1639,8 +1629,6 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 					__func__);
 			inst->clk_data.frame_rate = 1 << 16;
 		}
-		if (inst->state < MSM_VIDC_LOAD_RESOURCES)
-			msm_vidc_calculate_buffer_counts(inst);
 		if (inst->state == MSM_VIDC_START_DONE) {
 			rc = msm_venc_set_frame_rate(inst);
 			if (rc)
@@ -1697,8 +1685,6 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 					__func__);
 			inst->clk_data.operating_rate = 1 << 16;
 		}
-		if (inst->state < MSM_VIDC_LOAD_RESOURCES)
-			msm_vidc_calculate_buffer_counts(inst);
 		if (inst->state == MSM_VIDC_START_DONE) {
 			rc = msm_venc_set_operating_rate(inst);
 			if (rc)

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2019, The Linux Foundation. All rights reserved.
  */
 
 #include "msm_vidc_debug.h"
@@ -8,39 +8,9 @@
 #include "msm_vidc_buffer_calculations.h"
 #include "msm_vidc_clocks.h"
 
-#define VP9_REFERENCE_COUNT 8
-
-/* minimum number of input buffers */
-#define MIN_INPUT_BUFFERS 4
-/* Max number of PERF eligible sessions */
-#define MAX_PERF_ELIGIBLE_SESSIONS 4
-
-/* Decoder buffer count macros */
-/* total input buffers in case of decoder batch */
-#define BATCH_DEC_TOTAL_INPUT_BUFFERS 6
-
-/* total input buffers for decoder HFR usecase (fps capability > 480) */
-#define MAX_HFR_DEC_TOTAL_INPUT_BUFFERS 12
-
-/* total input buffers for decoder HFR usecase (fps capablity <= 480) */
-#define MIN_HFR_DEC_TOTAL_INPUT_BUFFERS 8
-
-
-/* extra output buffers in case of decoder batch */
-#define BATCH_DEC_EXTRA_OUTPUT_BUFFERS 6
-
-/* Encoder buffer count macros */
-/* total input buffers for encoder HFR usecase */
-#define HFR_ENC_TOTAL_INPUT_BUFFERS 16
-
-/* minimum number of output buffers */
-#define MIN_ENC_OUTPUT_BUFFERS 4
-
-/* extra output buffers for encoder HFR usecase */
-#define HFR_ENC_TOTAL_OUTPUT_BUFFERS 12
-
-/* extra output buffers for encoder HEIF usecase */
-#define HEIF_ENC_TOTAL_OUTPUT_BUFFERS 12
+#define MIN_NUM_THUMBNAIL_MODE_INPUT_BUFFERS MIN_NUM_INPUT_BUFFERS
+#define MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS MIN_NUM_OUTPUT_BUFFERS
+#define MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS_VP9 8
 
 #define HFI_COLOR_FORMAT_YUV420_NV12_UBWC_Y_TILE_WIDTH 32
 #define HFI_COLOR_FORMAT_YUV420_NV12_UBWC_Y_TILE_HEIGHT 8
@@ -78,6 +48,7 @@
 
 #define VENUS_DMA_ALIGNMENT BUFFER_ALIGNMENT_SIZE(256)
 
+#define NUM_OF_VPP_PIPES 4
 #define MAX_FE_NBR_CTRL_LCU64_LINE_BUFFER_SIZE   64
 #define MAX_FE_NBR_CTRL_LCU32_LINE_BUFFER_SIZE   64
 #define MAX_FE_NBR_CTRL_LCU16_LINE_BUFFER_SIZE   64
@@ -133,7 +104,7 @@
 	((((width + 15) >> 4) << 7))
 
 #define SIZE_H264D_LB_RECON_DMA_METADATA_WR(width, height) \
-	(ALIGN(height, 16) * 32)
+	(ALIGN(height, 8) * 32)
 
 #define SIZE_H264D_QP(width, height) \
 	(((width + 63) >> 6) * ((height + 63) >> 6) * 128)
@@ -141,9 +112,10 @@
 #define SIZE_HW_PIC(sizePerBuf) \
 	(NUM_HW_PIC_BUF * sizePerBuf)
 
-#define H264_CABAC_HDR_RATIO_HD_TOT 1
-#define H264_CABAC_RES_RATIO_HD_TOT 3
-
+#define H264_CABAC_HDR_RATIO_HD_TOT_NUM 1  /* 0.25 */
+#define H264_CABAC_HDR_RATIO_HD_TOT_DEN 4
+#define H264_CABAC_RES_RATIO_HD_TOT_NUM 3  /* 0.75 */
+#define H264_CABAC_RES_RATIO_HD_TOT_DEN 4
 /*
  * some content need more bin buffer, but limit buffer
  * size for high resolution
@@ -197,9 +169,10 @@
 
 #define SIZE_H265D_QP(width, height) SIZE_H264D_QP(width, height)
 
-#define H265_CABAC_HDR_RATIO_HD_TOT 2
-#define H265_CABAC_RES_RATIO_HD_TOT 2
-
+#define H265_CABAC_HDR_RATIO_HD_TOT_NUM 1
+#define H265_CABAC_HDR_RATIO_HD_TOT_DEN 2
+#define H265_CABAC_RES_RATIO_HD_TOT_NUM 1
+#define H265_CABAC_RES_RATIO_HD_TOT_DEN 2
 /*
  * some content need more bin buffer, but limit buffer size
  * for high resolution
@@ -224,19 +197,19 @@
 	max(((height + 31) >> 5) * MAX_SE_NBR_CTRL_LCU32_LINE_BUFFER_SIZE, \
 	((height + 63) >> 6) * MAX_SE_NBR_CTRL_LCU64_LINE_BUFFER_SIZE))
 #define SIZE_VPXD_LB_RECON_DMA_METADATA_WR(width, height) \
-	ALIGN((ALIGN(height, 16) / (4 / 2)) * 64, BUFFER_ALIGNMENT_SIZE(32))
+	ALIGN((ALIGN(height, 8) / (4 / 2)) * 64, BUFFER_ALIGNMENT_SIZE(32))
 #define SIZE_VP8D_LB_FE_TOP_DATA(width, height) \
 	((ALIGN(width, 16) + 8) * 10 * 2)
 #define SIZE_VP9D_LB_FE_TOP_DATA(width, height) \
-	((ALIGN(ALIGN(width, 16), 64) + 8) * 10 * 2)
+	((ALIGN(ALIGN(width, 8), 64) + 8) * 10 * 2)
 #define SIZE_VP8D_LB_PE_TOP_DATA(width, height) \
 	((ALIGN(width, 16) >> 4) * 64)
 #define SIZE_VP9D_LB_PE_TOP_DATA(width, height) \
-	((ALIGN(ALIGN(width, 16), 64) >> 6) * 176)
+	((ALIGN(ALIGN(width, 8), 64) >> 6) * 176)
 #define SIZE_VP8D_LB_VSP_TOP(width, height) \
 	(((ALIGN(width, 16) >> 4) * 64 / 2) + 256)
 #define SIZE_VP9D_LB_VSP_TOP(width, height) \
-	(((ALIGN(ALIGN(width, 16), 64) >> 6) * 64 * 8) + 256)
+	(((ALIGN(ALIGN(width, 8), 64) >> 6) * 64 * 8) + 256)
 
 
 #define HFI_IRIS2_VP9D_COMV_SIZE \
@@ -273,15 +246,11 @@
 #define HFI_VENUS_HEIGHT_ALIGNMENT 32
 
 #define SYSTEM_LAL_TILE10 192
-#define NUM_MBS_480P (((640 + 15) >> 4) * ((480 + 15) >> 4))
 #define NUM_MBS_720P (((1280 + 15) >> 4) * ((720 + 15) >> 4))
 #define NUM_MBS_4k (((4096 + 15) >> 4) * ((2304 + 15) >> 4))
 #define MB_SIZE_IN_PIXEL (16 * 16)
 #define HDR10PLUS_PAYLOAD_SIZE 1024
 #define HDR10_HIST_EXTRADATA_SIZE 4096
-
-static int msm_vidc_get_extra_input_buff_count(struct msm_vidc_inst *inst);
-static int msm_vidc_get_extra_output_buff_count(struct msm_vidc_inst *inst);
 
 static inline u32 calculate_h264d_scratch_size(struct msm_vidc_inst *inst,
 	u32 width, u32 height, bool is_interlaced);
@@ -293,40 +262,34 @@ static inline u32 calculate_mpeg2d_scratch_size(struct msm_vidc_inst *inst,
 	u32 width, u32 height, bool is_interlaced);
 
 static inline u32 calculate_enc_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 lcu_size, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 work_mode, u32 lcu_size);
 static inline u32 calculate_h264e_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 work_mode);
 static inline u32 calculate_h265e_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 work_mode);
 static inline u32 calculate_vp8e_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 work_mode);
 
 static inline u32 calculate_h264d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes);
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled);
 static inline u32 calculate_h265d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes);
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled);
 static inline u32 calculate_vp8d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes);
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled);
 static inline u32 calculate_vp9d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes);
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled);
 static inline u32 calculate_mpeg2d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes);
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled);
 
 static inline u32 calculate_h264e_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 num_ref, bool ten_bit);
 static inline u32 calculate_h265e_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 num_ref, bool ten_bit);
 static inline u32 calculate_vp8e_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, u32 num_vpp_pipes);
+	u32 width, u32 height, u32 num_ref, bool ten_bit);
 
 static inline u32 calculate_enc_scratch2_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, bool downscale,
-	u32 rotation_val, u32 flip);
+	u32 width, u32 height, u32 num_ref, bool ten_bit);
 
 static inline u32 calculate_enc_persist_size(void);
 
@@ -390,15 +353,14 @@ static struct msm_vidc_enc_buff_size_calculators vp8e_calculators = {
 int msm_vidc_get_decoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_dec_buff_size_calculators *dec_calculators;
-	u32 width, height, i, out_min_count, num_vpp_pipes;
+	u32 width, height, i, out_min_count;
 	struct v4l2_format *f;
 
-	if (!inst || !inst->core || !inst->core->platform_data) {
-		d_vpr_e("%s: Instance is null!", __func__);
+	if (!inst) {
+		pr_err("Instance is null!");
 		return -EINVAL;
 	}
 
-	num_vpp_pipes = inst->core->platform_data->num_vpp_pipes;
 	f = &inst->fmts[INPUT_PORT].v4l2_fmt;
 	switch (f->fmt.pix_mp.pixelformat) {
 	case V4L2_PIX_FMT_H264:
@@ -417,8 +379,7 @@ int msm_vidc_get_decoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 		dec_calculators = &mpeg2d_calculators;
 		break;
 	default:
-		s_vpr_e(inst->sid,
-			"Invalid pix format. Internal buffer cal not defined : %x\n",
+		pr_debug("Invalid pix format. Internal buffer cal not defined : %x ",
 			f->fmt.pix_mp.pixelformat);
 		return -EINVAL;
 	}
@@ -448,8 +409,7 @@ int msm_vidc_get_decoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 			curr_req->buffer_size =
 				dec_calculators->calculate_scratch1_size(
 					inst, width, height, out_min_count,
-					is_secondary_output_mode(inst),
-					num_vpp_pipes);
+					is_secondary_output_mode(inst));
 			valid_buffer_type = true;
 		} else if (curr_req->buffer_type ==
 			HAL_BUFFER_INTERNAL_PERSIST_1) {
@@ -477,10 +437,6 @@ int msm_vidc_get_num_ref_frames(struct msm_vidc_inst *inst)
 	struct v4l2_ctrl *layer_ctrl;
 	u32 codec;
 
-	codec = get_v4l2_codec(inst);
-	if (codec == V4L2_PIX_FMT_VP8)
-		num_ref = num_ref << 1;
-
 	bframe_ctrl = get_ctrl(inst, V4L2_CID_MPEG_VIDEO_B_FRAMES);
 	num_bframes = bframe_ctrl->val;
 	if (num_bframes > 0)
@@ -493,18 +449,19 @@ int msm_vidc_get_num_ref_frames(struct msm_vidc_inst *inst)
 		num_ref = num_ref + ltr_count;
 
 	layer_ctrl = get_ctrl(inst,
-		V4L2_CID_MPEG_VIDC_VIDEO_HEVC_MAX_HIER_CODING_LAYER);
+		V4L2_CID_MPEG_VIDEO_HEVC_HIER_CODING_LAYER);
 	num_hp_layers = layer_ctrl->val;
-	if (num_hp_layers > 1) {
+	codec = get_v4l2_codec(inst);
+	if (num_hp_layers > 0) {
 		/* LTR and B - frame not supported with hybrid HP */
 		if (inst->hybrid_hp)
-			num_ref = (num_hp_layers + 1) >> 1;
+			num_ref = (num_hp_layers - 1);
 		else if (codec == V4L2_PIX_FMT_HEVC)
 			num_ref = ((num_hp_layers + 1) / 2) + ltr_count;
-		else if ((codec == V4L2_PIX_FMT_H264) && (num_hp_layers < 4))
-			num_ref = (num_hp_layers - 1) + ltr_count;
+		else if ((codec == V4L2_PIX_FMT_H264) && (num_hp_layers <= 4))
+			num_ref = ((1 << (num_hp_layers - 1)) - 1) + ltr_count;
 		else
-			num_ref = num_hp_layers + ltr_count;
+			num_ref = ((num_hp_layers + 1) / 2) + ltr_count;
 	}
 	return num_ref;
 }
@@ -512,19 +469,17 @@ int msm_vidc_get_num_ref_frames(struct msm_vidc_inst *inst)
 int msm_vidc_get_encoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_enc_buff_size_calculators *enc_calculators;
-	u32 width, height, i, num_ref, num_vpp_pipes;
-	u32 rotation_val = 0, flip = 0;
-	bool is_tenbit = false, is_downscale = false;
+	u32 width, height, i, num_ref;
+	bool is_tenbit = false;
 	int num_bframes;
-	struct v4l2_ctrl *bframe, *rotation, *hflip, *vflip;
+	struct v4l2_ctrl *bframe;
 	struct v4l2_format *f;
 
-	if (!inst || !inst->core || !inst->core->platform_data) {
-		d_vpr_e("%s: Instance is null!", __func__);
+	if (!inst) {
+		pr_err("Instance is null!");
 		return -EINVAL;
 	}
 
-	num_vpp_pipes = inst->core->platform_data->num_vpp_pipes;
 	f = &inst->fmts[OUTPUT_PORT].v4l2_fmt;
 	switch (f->fmt.pix_mp.pixelformat) {
 	case V4L2_PIX_FMT_H264:
@@ -537,36 +492,23 @@ int msm_vidc_get_encoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 		enc_calculators = &vp8e_calculators;
 		break;
 	default:
-		s_vpr_e(inst->sid,
-			"Invalid pix format. Internal buffer cal not defined : %x ",
+		pr_debug("Invalid pix format. Internal buffer cal not defined : %x ",
 			f->fmt.pix_mp.pixelformat);
 		return -EINVAL;
 	}
 
+	f = &inst->fmts[INPUT_PORT].v4l2_fmt;
+	width = f->fmt.pix_mp.width;
+	height = f->fmt.pix_mp.height;
 	bframe = get_ctrl(inst, V4L2_CID_MPEG_VIDEO_B_FRAMES);
 	num_bframes = bframe->val;
 	if (num_bframes < 0) {
-		s_vpr_e(inst->sid, "%s: get num bframe failed\n", __func__);
+		pr_debug("%s: get num bframe failed\n", __func__);
 		return -EINVAL;
 	}
-	f = &inst->fmts[OUTPUT_PORT].v4l2_fmt;
-	rotation = get_ctrl(inst, V4L2_CID_ROTATE);
-	rotation_val = rotation->val;
-	if (rotation_val == 90 || rotation_val == 270) {
-		/* Internal buffer size calc are based on rotated wxh */
-		width = f->fmt.pix_mp.height;
-		height = f->fmt.pix_mp.width;
-	} else {
-		width = f->fmt.pix_mp.width;
-		height = f->fmt.pix_mp.height;
-	}
-	hflip = get_ctrl(inst, V4L2_CID_HFLIP);
-	vflip = get_ctrl(inst, V4L2_CID_VFLIP);
-	flip = hflip->val | vflip->val;
 
 	num_ref = msm_vidc_get_num_ref_frames(inst);
 	is_tenbit = (inst->bit_depth == MSM_VIDC_BIT_DEPTH_10);
-	is_downscale = vidc_scalar_enabled(inst);
 
 	for (i = 0; i < HAL_BUFFER_MAX; i++) {
 		struct hal_buffer_requirements *curr_req;
@@ -577,23 +519,21 @@ int msm_vidc_get_encoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 			curr_req->buffer_size =
 				enc_calculators->calculate_scratch_size(
 					inst, width, height,
-					inst->clk_data.work_mode,
-					num_vpp_pipes);
+					inst->clk_data.work_mode);
 			valid_buffer_type = true;
 		} else  if (curr_req->buffer_type ==
 			HAL_BUFFER_INTERNAL_SCRATCH_1) {
 			curr_req->buffer_size =
 				enc_calculators->calculate_scratch1_size(
 					inst, width, height, num_ref,
-					is_tenbit, num_vpp_pipes);
+					is_tenbit);
 			valid_buffer_type = true;
 		} else if (curr_req->buffer_type ==
 			HAL_BUFFER_INTERNAL_SCRATCH_2) {
 			curr_req->buffer_size =
 				enc_calculators->calculate_scratch2_size(
 					inst, width, height, num_ref,
-					is_tenbit, is_downscale, rotation_val,
-					flip);
+					is_tenbit);
 			valid_buffer_type = true;
 		} else if (curr_req->buffer_type ==
 			HAL_BUFFER_INTERNAL_PERSIST) {
@@ -614,7 +554,7 @@ int msm_vidc_get_encoder_internal_buffer_sizes(struct msm_vidc_inst *inst)
 int msm_vidc_calculate_internal_buffer_sizes(struct msm_vidc_inst *inst)
 {
 	if (!inst) {
-		d_vpr_e("%s: Instance is null!", __func__);
+		pr_err("Instance is null!");
 		return -EINVAL;
 	}
 
@@ -629,296 +569,146 @@ int msm_vidc_calculate_internal_buffer_sizes(struct msm_vidc_inst *inst)
 void msm_vidc_init_buffer_size_calculators(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_core *core;
-	uint32_t vpu;
 
 	if (!inst)
 		return;
 
 	inst->buffer_size_calculators = NULL;
 	core = inst->core;
-	vpu = core->platform_data->vpu_ver;
 
 	/* Change this to IRIS2 when ready */
-	if (vpu == VPU_VERSION_IRIS2 || vpu == VPU_VERSION_IRIS2_1)
+	if (core->platform_data->vpu_ver == VPU_VERSION_IRIS2)
 		inst->buffer_size_calculators =
 			msm_vidc_calculate_internal_buffer_sizes;
 }
 
-int msm_vidc_calculate_input_buffer_count(struct msm_vidc_inst *inst)
+int msm_vidc_init_buffer_count(struct msm_vidc_inst *inst)
 {
 	struct msm_vidc_format *fmt;
 	int extra_buff_count = 0;
-
-	if (!inst) {
-		d_vpr_e("%s: invalid params\n", __func__);
-		return -EINVAL;
-	}
-	fmt = &inst->fmts[INPUT_PORT];
+	u32 codec, input_min_count = 4, output_min_count = 4;
 
 	if (!is_decode_session(inst) && !is_encode_session(inst))
 		return 0;
 
-	/* do not change buffer count while session is running  */
-	if (inst->state == MSM_VIDC_START_DONE)
-		return 0;
-
-	if (is_thumbnail_session(inst)) {
-		fmt->count_min = fmt->count_min_host = fmt->count_actual =
-			SINGLE_INPUT_BUFFER;
-		return 0;
-	}
-
-	if (is_grid_session(inst)) {
-		fmt->count_min = fmt->count_min_host = fmt->count_actual =
-			SINGLE_INPUT_BUFFER + 1;
-		return 0;
-	}
-
+	codec = get_v4l2_codec(inst);
+	/*
+	 * Update input buff counts
+	 * Extradata uses same count as input port
+	 */
+	fmt = &inst->fmts[INPUT_PORT];
 	extra_buff_count = msm_vidc_get_extra_buff_count(inst,
 				HAL_BUFFER_INPUT);
-	fmt->count_min = MIN_INPUT_BUFFERS;
+	fmt->count_min = input_min_count;
+	/* batching needs minimum batch size count of input buffers */
+	if (inst->core->resources.decode_batching &&
+		is_decode_session(inst) &&
+		fmt->count_min < inst->batch.size)
+		fmt->count_min = inst->batch.size;
 	fmt->count_min_host = fmt->count_actual =
 		fmt->count_min + extra_buff_count;
 
-	s_vpr_h(inst->sid, "%s: input min %d min_host %d actual %d\n",
-		__func__, fmt->count_min,
-		fmt->count_min_host, fmt->count_actual);
-
-	return 0;
-}
-
-int msm_vidc_calculate_output_buffer_count(struct msm_vidc_inst *inst)
-{
-	struct msm_vidc_format *fmt;
-	int extra_buff_count = 0;
-	u32 codec, output_min_count;
-
-	if (!inst) {
-		d_vpr_e("%s: invalid params\n", __func__);
-		return -EINVAL;
-	}
-	fmt = &inst->fmts[OUTPUT_PORT];
-	codec = get_v4l2_codec(inst);
-
-	if (!is_decode_session(inst) && !is_encode_session(inst))
-		return 0;
-
-	/* do not change buffer count while session is running  */
-	if (inst->state == MSM_VIDC_START_DONE)
-		return 0;
-
-	if (is_thumbnail_session(inst)) {
-		fmt->count_min = (codec == V4L2_PIX_FMT_VP9) ?
-			VP9_REFERENCE_COUNT : SINGLE_OUTPUT_BUFFER;
-		fmt->count_min_host = fmt->count_actual = fmt->count_min;
-		return 0;
-	}
+	pr_debug("%s: %x : input min %d min_host %d actual %d\n",
+		__func__, hash32_ptr(inst->session),
+		fmt->count_min, fmt->count_min_host, fmt->count_actual);
 
 	/* Update output buff count: Changes for decoder based on codec */
 	if (is_decode_session(inst)) {
 		switch (codec) {
 		case V4L2_PIX_FMT_MPEG2:
+			output_min_count = 6;
+			break;
+		case V4L2_PIX_FMT_H264:
+			output_min_count = 8;
+			break;
+		case V4L2_PIX_FMT_HEVC:
+			output_min_count = 8;
+			break;
 		case V4L2_PIX_FMT_VP8:
 			output_min_count = 6;
 			break;
 		case V4L2_PIX_FMT_VP9:
-			output_min_count = 9;
+			output_min_count = 11;
 			break;
-		default:
-			output_min_count = 8; //H264, HEVC
 		}
-	} else {
-		output_min_count = MIN_ENC_OUTPUT_BUFFERS;
 	}
+	fmt = &inst->fmts[OUTPUT_PORT];
 	extra_buff_count = msm_vidc_get_extra_buff_count(inst,
 				HAL_BUFFER_OUTPUT);
 	fmt->count_min = output_min_count;
 	fmt->count_min_host = fmt->count_actual =
 		fmt->count_min + extra_buff_count;
 
-	s_vpr_h(inst->sid, "%s: output min %d min_host %d actual %d\n",
-		__func__, fmt->count_min, fmt->count_min_host,
-		fmt->count_actual);
+	pr_debug("%s: %x : output min %d min_host %d actual %d\n",
+		__func__, hash32_ptr(inst->session),
+		fmt->count_min, fmt->count_min_host, fmt->count_actual);
 
 	return 0;
 }
-
-int msm_vidc_calculate_buffer_counts(struct msm_vidc_inst *inst)
+u32 msm_vidc_set_buffer_count_for_thumbnail(struct msm_vidc_inst *inst)
 {
-	int rc;
+	struct msm_vidc_format *fmt;
 
-	rc = msm_vidc_calculate_input_buffer_count(inst);
-	if (rc)
-		return rc;
-	rc = msm_vidc_calculate_output_buffer_count(inst);
-	if (rc)
-		return rc;
+	fmt = &inst->fmts[INPUT_PORT];
+	fmt->count_min = MIN_NUM_THUMBNAIL_MODE_INPUT_BUFFERS;
+	fmt->count_min_host = MIN_NUM_THUMBNAIL_MODE_INPUT_BUFFERS;
+	fmt->count_actual = MIN_NUM_THUMBNAIL_MODE_INPUT_BUFFERS;
 
-	return rc;
+	fmt = &inst->fmts[OUTPUT_PORT];
+	/* VP9 super frame requires multiple frames decoding */
+	if (get_v4l2_codec(inst) == V4L2_PIX_FMT_VP9) {
+		fmt->count_min = MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS_VP9;
+		fmt->count_min_host =
+			MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS_VP9;
+		fmt->count_actual =
+			MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS_VP9;
+	} else {
+		fmt->count_min = MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS;
+		fmt->count_min_host = MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS;
+		fmt->count_actual = MIN_NUM_THUMBNAIL_MODE_OUTPUT_BUFFERS;
+	}
+	return 0;
 }
 
 int msm_vidc_get_extra_buff_count(struct msm_vidc_inst *inst,
 	enum hal_buffer buffer_type)
 {
+	unsigned int count = 0;
+
 	if (!inst || !inst->core) {
-		d_vpr_e("%s: Invalid args\n", __func__);
+		pr_err("%s Invalid args\n", __func__);
 		return 0;
 	}
-
-	if (!is_decode_session(inst) && !is_encode_session(inst))
+	/*
+	 * no extra buffers for thumbnail session because
+	 * neither dcvs nor batching will be enabled
+	 */
+	if (is_thumbnail_session(inst))
 		return 0;
 
-	if (buffer_type == HAL_BUFFER_OUTPUT)
-		return msm_vidc_get_extra_output_buff_count(inst);
-	else if (buffer_type == HAL_BUFFER_INPUT)
-		return msm_vidc_get_extra_input_buff_count(inst);
-
-	return 0;
-}
-
-static int msm_vidc_get_extra_input_buff_count(struct msm_vidc_inst *inst)
-{
-	unsigned int extra_input_count = 0;
-	struct msm_vidc_core *core;
-	struct v4l2_format *f;
-	int max_fps = 0;
-
-	if (!inst || !inst->core) {
-		d_vpr_e("%s: invalid params %pK\n", __func__, inst);
-		return -EINVAL;
+	/* Add DCVS extra buffer count */
+	if (inst->core->resources.dcvs) {
+		if (is_decode_session(inst) &&
+			buffer_type == HAL_BUFFER_OUTPUT) {
+			count += DCVS_DEC_EXTRA_OUTPUT_BUFFERS;
+		} else if ((is_encode_session(inst) &&
+			buffer_type == HAL_BUFFER_INPUT)) {
+			count += DCVS_ENC_EXTRA_INPUT_BUFFERS;
+		}
 	}
-
-	core = inst->core;
 
 	/*
-	 * For a non-realtime session, extra buffers are not required.
-	 * For thumbnail session, extra buffers are not required as
-	 * neither dcvs nor batching will be enabled.
+	 * if platform supports decode batching ensure minimum
+	 * batch size count of extra buffers added on output port
 	 */
-	if (!is_realtime_session(inst) || is_thumbnail_session(inst))
-		return extra_input_count;
-
-	if (is_decode_session(inst)) {
-		/*
-		 * Batch mode and HFR not supported for resolution greater than
-		 * UHD. Hence extra buffers are not required.
-		 */
-		f = &inst->fmts[INPUT_PORT].v4l2_fmt;
-		if (res_is_greater_than(f->fmt.pix_mp.width,
-					f->fmt.pix_mp.height, 4096, 2160))
-			goto exit;
-
-		if (inst->batch.enable)
-			extra_input_count = (BATCH_DEC_TOTAL_INPUT_BUFFERS -
-				MIN_INPUT_BUFFERS);
-
-		/*
-		 * HFR decode session needs more buffers and we do not know
-		 * whether a decode session is HFR or not until input buffers
-		 * queued but by then input buffers are already allocated and
-		 * we do not have option to increase input buffer count then.
-		 * So have more buffers for initial 4 elgible sessions (and
-		 * not for all sessions to avoid over memory usage issues).
-		 */
-		if (!is_secure_session(inst) &&
-			msm_comm_get_num_perf_sessions(inst) <
-			MAX_PERF_ELIGIBLE_SESSIONS) {
-			max_fps = inst->capability.cap[CAP_FRAMERATE].max;
-			inst->is_perf_eligible_session = true;
-			if (max_fps > 480)
-				extra_input_count =
-					(MAX_HFR_DEC_TOTAL_INPUT_BUFFERS -
-					MIN_INPUT_BUFFERS);
-			else
-				extra_input_count =
-					(MIN_HFR_DEC_TOTAL_INPUT_BUFFERS -
-					MIN_INPUT_BUFFERS);
-		}
-	} else if (is_encode_session(inst)) {
-		/* add 4 extra buffers for dcvs */
-		if (core->resources.dcvs)
-			extra_input_count = DCVS_ENC_EXTRA_INPUT_BUFFERS;
-
-		/* Increase buffer count for HFR usecase */
-		if (msm_comm_get_num_perf_sessions(inst) <
-			MAX_PERF_ELIGIBLE_SESSIONS &&
-			msm_vidc_get_fps(inst) > 60) {
-			inst->is_perf_eligible_session = true;
-			extra_input_count = (HFR_ENC_TOTAL_INPUT_BUFFERS -
-				MIN_INPUT_BUFFERS);
-		}
+	if (buffer_type == HAL_BUFFER_OUTPUT) {
+		if (inst->core->resources.decode_batching &&
+			is_decode_session(inst) &&
+			count < inst->batch.size)
+			count = inst->batch.size;
 	}
 
-exit:
-	return extra_input_count;
-}
-
-static int msm_vidc_get_extra_output_buff_count(struct msm_vidc_inst *inst)
-{
-	unsigned int extra_output_count = 0;
-	struct msm_vidc_core *core;
-	struct v4l2_format *f;
-
-	if (!inst || !inst->core) {
-		d_vpr_e("%s: invalid params %pK\n", __func__, inst);
-		return -EINVAL;
-	}
-
-	core = inst->core;
-
-	/*
-	 * For a non-realtime session, extra buffers are not required.
-	 * For thumbnail session, extra buffers are not required as
-	 * neither dcvs nor batching will be enabled.
-	 */
-	if (!is_realtime_session(inst) || is_thumbnail_session(inst))
-		return extra_output_count;
-
-	/* For HEIF, we are increasing buffer count */
-	if (is_image_session(inst) || is_grid_session(inst)) {
-		extra_output_count = (HEIF_ENC_TOTAL_OUTPUT_BUFFERS -
-			MIN_ENC_OUTPUT_BUFFERS);
-		return extra_output_count;
-	}
-
-	if (is_decode_session(inst)) {
-		/* add 4 extra buffers for dcvs */
-		if (core->resources.dcvs)
-			extra_output_count = DCVS_DEC_EXTRA_OUTPUT_BUFFERS;
-		/*
-		 * Batch mode and HFR not supported for resolution greater than
-		 * UHD. Hence extra buffers are not required.
-		 */
-		f = &inst->fmts[INPUT_PORT].v4l2_fmt;
-		if (res_is_greater_than(f->fmt.pix_mp.width,
-					f->fmt.pix_mp.height, 4096, 2160))
-			goto exit;
-
-		/*
-		 * Minimum number of decoder output buffers is codec specific.
-		 * If platform supports decode batching ensure minimum 6 extra
-		 * output buffers. Else add 4 extra output buffers for DCVS.
-		 */
-		if (inst->batch.enable)
-			extra_output_count = BATCH_DEC_EXTRA_OUTPUT_BUFFERS;
-	} else if (is_encode_session(inst)) {
-		/*
-		 * Batching and DCVS are based on input. We assume that encoder
-		 * output buffers can be re-cycled quickly. Hence it is assumed
-		 * that output buffer count does not impact for DCVS/batching.
-		 * For HFR, we are increasing buffer count to avoid latency/perf
-		 * issue to re-cycle buffers.
-		 */
-		if (msm_comm_get_num_perf_sessions(inst) <
-			MAX_PERF_ELIGIBLE_SESSIONS &&
-			msm_vidc_get_fps(inst) > 60) {
-			inst->is_perf_eligible_session = true;
-			extra_output_count = (HFR_ENC_TOTAL_OUTPUT_BUFFERS -
-				MIN_ENC_OUTPUT_BUFFERS);
-		}
-	}
-exit:
-	return extra_output_count;
+	return count;
 }
 
 u32 msm_vidc_calculate_dec_input_frame_size(struct msm_vidc_inst *inst)
@@ -948,20 +738,18 @@ u32 msm_vidc_calculate_dec_input_frame_size(struct msm_vidc_inst *inst)
 			div_factor = 2;
 	}
 
-	if (is_secure_session(inst) && num_mbs >= NUM_MBS_720P)
-		div_factor = div_factor << 1;
-
-	/* For targets that doesn't support 4k, consider max mb's for that
-	 * target and allocate max input buffer size for the same
-	 */
-	if (inst->core->platform_data->vpu_ver == VPU_VERSION_AR50_LITE) {
-		base_res_mbs = inst->capability.cap[CAP_MBS_PER_FRAME].max;
-		div_factor = 1;
-		if (num_mbs < NUM_MBS_720P)
-			base_res_mbs = base_res_mbs * 2;
-	}
-
 	frame_size = base_res_mbs * MB_SIZE_IN_PIXEL * 3 / 2 / div_factor;
+
+	if (is_secure_session(inst)) {
+		u32 max_bitrate = inst->capability.cap[CAP_SECURE_BITRATE].max;
+
+		/*
+		 * for secure, calc frame_size based on max bitrate,
+		 * peak bitrate can be 10 times more and
+		 * frame rate assumed to be 30 fps at least
+		 */
+		frame_size = (max_bitrate * 10 / 8) / 30;
+	}
 
 	 /* multiply by 10/8 (1.25) to get size for 10 bit case */
 	if ((f->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_VP9) ||
@@ -971,10 +759,10 @@ u32 msm_vidc_calculate_dec_input_frame_size(struct msm_vidc_inst *inst)
 	if (inst->buffer_size_limit &&
 		(inst->buffer_size_limit < frame_size)) {
 		frame_size = inst->buffer_size_limit;
-		s_vpr_h(inst->sid, "input buffer size limited to %d\n",
+		pr_debug("input buffer size limited to %d\n",
 			frame_size);
 	} else {
-		s_vpr_h(inst->sid, "set input buffer size to %d\n",
+		pr_debug("set input buffer size to %d\n",
 			frame_size);
 	}
 
@@ -987,8 +775,7 @@ u32 msm_vidc_calculate_dec_output_frame_size(struct msm_vidc_inst *inst)
 	struct v4l2_format *f;
 
 	f = &inst->fmts[OUTPUT_PORT].v4l2_fmt;
-	hfi_fmt = msm_comm_convert_color_fmt(f->fmt.pix_mp.pixelformat,
-					inst->sid);
+	hfi_fmt = msm_comm_convert_color_fmt(f->fmt.pix_mp.pixelformat,inst->sid);
 	return VENUS_BUFFER_SIZE(hfi_fmt, f->fmt.pix_mp.width,
 			f->fmt.pix_mp.height);
 }
@@ -1007,8 +794,7 @@ u32 msm_vidc_calculate_enc_input_frame_size(struct msm_vidc_inst *inst)
 	struct v4l2_format *f;
 
 	f = &inst->fmts[INPUT_PORT].v4l2_fmt;
-	hfi_fmt = msm_comm_convert_color_fmt(f->fmt.pix_mp.pixelformat,
-					inst->sid);
+	hfi_fmt = msm_comm_convert_color_fmt(f->fmt.pix_mp.pixelformat,inst->sid);
 	return VENUS_BUFFER_SIZE(hfi_fmt, f->fmt.pix_mp.width,
 			f->fmt.pix_mp.height);
 }
@@ -1023,44 +809,36 @@ u32 msm_vidc_calculate_enc_output_frame_size(struct msm_vidc_inst *inst)
 	f = &inst->fmts[OUTPUT_PORT].v4l2_fmt;
 	/*
 	 * Encoder output size calculation: 32 Align width/height
-	 * For CQ or heic session : YUVsize * 2
-	 * For resolution <= 480p : YUVsize * 2
-	 * For resolution > 480p & <= 4K : YUVsize / 2
+	 * For resolution < 720p : YUVsize * 4
+	 * For resolution > 720p & <= 4K : YUVsize / 2
 	 * For resolution > 4k : YUVsize / 4
 	 * Initially frame_size = YUVsize * 2;
 	 */
-
-	if (is_grid_session(inst)) {
-		f->fmt.pix_mp.width = f->fmt.pix_mp.height = HEIC_GRID_DIMENSION;
-	}
 	width = ALIGN(f->fmt.pix_mp.width, BUFFER_ALIGNMENT_SIZE(32));
 	height = ALIGN(f->fmt.pix_mp.height, BUFFER_ALIGNMENT_SIZE(32));
 	mbs_per_frame = NUM_MBS_PER_FRAME(width, height);
 	frame_size = (width * height * 3);
 
-	if (inst->rc_type == V4L2_MPEG_VIDEO_BITRATE_MODE_CQ ||
-		is_grid_session(inst) || is_image_session(inst))
-		goto calc_done;
-
-	if (mbs_per_frame <= NUM_MBS_480P)
-		(void)frame_size; /* Default frame_size = YUVsize * 2 */
+	if (mbs_per_frame < NUM_MBS_720P)
+		frame_size = frame_size << 1;
 	else if (mbs_per_frame <= NUM_MBS_4k)
 		frame_size = frame_size >> 2;
 	else
 		frame_size = frame_size >> 3;
 
-	if (inst->rc_type == RATE_CONTROL_OFF)
+	if ((inst->rc_type == RATE_CONTROL_OFF) ||
+		(inst->rc_type == V4L2_MPEG_VIDEO_BITRATE_MODE_CQ))
 		frame_size = frame_size << 1;
 
 	if (inst->rc_type == RATE_CONTROL_LOSSLESS)
-		frame_size = (width * height * 9) >> 2;
+		frame_size = (width * height * 6);
 
-	/* multiply by 10/8 (1.25) to get size for 10 bit case */
-	if (inst->core->platform_data->vpu_ver != VPU_VERSION_AR50_LITE &&
-		f->fmt.pix_mp.pixelformat == V4L2_PIX_FMT_HEVC)
-		frame_size = frame_size + (frame_size >> 2);
+	/* For 10-bit cases size = size * 1.25 */
+	if (inst->bit_depth == MSM_VIDC_BIT_DEPTH_10) {
+		frame_size *= 5;
+		frame_size /= 4;
+	}
 
-calc_done:
 	return ALIGN(frame_size, SZ_4K);
 }
 
@@ -1130,7 +908,7 @@ u32 msm_vidc_calculate_enc_output_extra_size(struct msm_vidc_inst *inst)
 	return ALIGN(size, SZ_4K);
 }
 
-static inline u32 size_vpss_lb(u32 width, u32 height, u32 num_vpp_pipes)
+static inline u32 size_vpss_lb(u32 width, u32 height)
 {
 	u32 vpss_4tap_top_buffer_size, vpss_div2_top_buffer_size;
 	u32 vpss_4tap_left_buffer_size, vpss_div2_left_buffer_size;
@@ -1147,12 +925,12 @@ static inline u32 size_vpss_lb(u32 width, u32 height, u32 num_vpp_pipes)
 	opb_wr_top_line_luma_buf_size = ALIGN(opb_wr_top_line_luma_buf_size,
 		VENUS_DMA_ALIGNMENT) + (MAX_TILE_COLUMNS - 1) * 256;
 	opb_wr_top_line_luma_buf_size = max(opb_wr_top_line_luma_buf_size,
-		(32 * ALIGN(height, 16)));
+		(32 * ALIGN(height, 8)));
 	opb_wr_top_line_chroma_buf_size = opb_wr_top_line_luma_buf_size;
 	opb_lb_wr_llb_uv_buffer_size = opb_lb_wr_llb_y_buffer_size =
-		ALIGN((ALIGN(height, 16) / 2) *
+		ALIGN((ALIGN(height, 8) / 2) *
 			64, BUFFER_ALIGNMENT_SIZE(32));
-	size = num_vpp_pipes * 2 * (vpss_4tap_top_buffer_size +
+	size = NUM_OF_VPP_PIPES * 2 * (vpss_4tap_top_buffer_size +
 		vpss_div2_top_buffer_size) +
 		2 * (vpss_4tap_left_buffer_size +
 		vpss_div2_left_buffer_size) +
@@ -1212,8 +990,7 @@ static inline u32 size_h264d_vpp_cmd_buf(u32 height)
 		SIZE_H264D_VPP_CMD_PER_BUF;
 }
 
-static inline u32 hfi_iris2_h264d_non_comv_size(u32 width, u32 height,
-	u32 num_vpp_pipes)
+static inline u32 hfi_iris2_h264d_non_comv_size(u32 width, u32 height)
 {
 	u32 size;
 	u32 size_bse, size_vpp;
@@ -1228,11 +1005,11 @@ static inline u32 hfi_iris2_h264d_non_comv_size(u32 width, u32 height,
 		ALIGN(SIZE_H264D_LB_FE_TOP_CTRL(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_H264D_LB_FE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_H264D_LB_SE_TOP_CTRL(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_H264D_LB_SE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_H264D_LB_PE_TOP_DATA(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_H264D_LB_VSP_TOP(width, height),
@@ -1255,8 +1032,10 @@ static inline u32 size_h264d_hw_bin_buffer(u32 width, u32 height)
 			((BIN_BUFFER_THRESHOLD * 3) >> 1) :
 			((product * 3) >> 1);
 
-	size_bin_hdr = size_yuv * H264_CABAC_HDR_RATIO_HD_TOT;
-	size_bin_res = size_yuv * H264_CABAC_RES_RATIO_HD_TOT;
+	size_bin_hdr = size_yuv * H264_CABAC_HDR_RATIO_HD_TOT_NUM /
+		H264_CABAC_HDR_RATIO_HD_TOT_DEN;
+	size_bin_res = size_yuv * H264_CABAC_RES_RATIO_HD_TOT_NUM /
+		H264_CABAC_RES_RATIO_HD_TOT_DEN;
 	size_bin_hdr = ALIGN(size_bin_hdr, VENUS_DMA_ALIGNMENT);
 	size_bin_res = ALIGN(size_bin_res, VENUS_DMA_ALIGNMENT);
 	size = size_bin_hdr + size_bin_res;
@@ -1270,10 +1049,12 @@ static inline u32 calculate_h264d_scratch_size(struct msm_vidc_inst *inst,
 	u32 aligned_height = ALIGN(height, BUFFER_ALIGNMENT_SIZE(16));
 	u32 size = 0;
 
-	if (!is_interlaced)
+	if (!is_interlaced) {
 		size = size_h264d_hw_bin_buffer(aligned_width, aligned_height);
-	else
+		size = size * NUM_OF_VPP_PIPES;
+	} else {
 		size = 0;
+	}
 
 	return size;
 }
@@ -1282,13 +1063,11 @@ static inline u32 size_h265d_bse_cmd_buf(u32 width, u32 height)
 {
 	u32 size;
 
-	size = (ALIGN(width, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS) *
-		(ALIGN(height, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS) *
-		NUM_HW_PIC_BUF;
+	size = ALIGN(((ALIGN(width, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS) +
+		(ALIGN(height, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS)) *
+		NUM_HW_PIC_BUF, VENUS_DMA_ALIGNMENT);
 	size = min_t(u32, size, H265D_MAX_SLICE + 1);
 	size = 2 * size * SIZE_H265D_BSE_CMD_PER_BUF;
-	size = ALIGN(size, VENUS_DMA_ALIGNMENT);
-
 	return size;
 }
 
@@ -1296,13 +1075,13 @@ static inline u32 size_h265d_vpp_cmd_buf(u32 width, u32 height)
 {
 	u32 size = 0;
 
-	size = (ALIGN(width, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS) *
-		(ALIGN(height, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS) *
-		NUM_HW_PIC_BUF;
+	size = ALIGN((
+		(ALIGN(width, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS) +
+		(ALIGN(height, LCU_MAX_SIZE_PELS) / LCU_MIN_SIZE_PELS)) *
+		NUM_HW_PIC_BUF, VENUS_DMA_ALIGNMENT);
 	size = min_t(u32, size, H265D_MAX_SLICE + 1);
 	size = ALIGN(size, 4);
 	size = 2 * size * SIZE_H265D_VPP_CMD_PER_BUF;
-	size = ALIGN(size, VENUS_DMA_ALIGNMENT);
 
 	return size;
 }
@@ -1320,8 +1099,7 @@ static inline u32 hfi_iris2_h265d_comv_size(u32 width, u32 height,
 	return size;
 }
 
-static inline u32 hfi_iris2_h265d_non_comv_size(u32 width, u32 height,
-	u32 num_vpp_pipes)
+static inline u32 hfi_iris2_h265d_non_comv_size(u32 width, u32 height)
 {
 	u32 size_bse, size_vpp;
 	u32 size = 0;
@@ -1341,9 +1119,9 @@ static inline u32 hfi_iris2_h265d_non_comv_size(u32 width, u32 height,
 		ALIGN(SIZE_H265D_LB_FE_TOP_CTRL(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_H265D_LB_FE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_H265D_LB_SE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_H265D_LB_SE_TOP_CTRL(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_H265D_LB_PE_TOP_DATA(width, height),
@@ -1351,7 +1129,7 @@ static inline u32 hfi_iris2_h265d_non_comv_size(u32 width, u32 height,
 		ALIGN(SIZE_H265D_LB_VSP_TOP(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_H265D_LB_VSP_LEFT(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_H265D_LB_RECON_DMA_METADATA_WR(width, height),
 			VENUS_DMA_ALIGNMENT) * 4 +
 		ALIGN(SIZE_H265D_QP(width, height), VENUS_DMA_ALIGNMENT);
@@ -1369,8 +1147,10 @@ static inline u32 size_h265d_hw_bin_buffer(u32 width, u32 height)
 	size_yuv = (product <= BIN_BUFFER_THRESHOLD) ?
 		((BIN_BUFFER_THRESHOLD * 3) >> 1) :
 		((product * 3) >> 1);
-	size_bin_hdr = size_yuv * H265_CABAC_HDR_RATIO_HD_TOT;
-	size_bin_res = size_yuv * H265_CABAC_RES_RATIO_HD_TOT;
+	size_bin_hdr = size_yuv * H265_CABAC_HDR_RATIO_HD_TOT_NUM /
+		H265_CABAC_HDR_RATIO_HD_TOT_DEN;
+	size_bin_res = size_yuv * H265_CABAC_RES_RATIO_HD_TOT_NUM /
+		H265_CABAC_RES_RATIO_HD_TOT_DEN;
 	size_bin_hdr = ALIGN(size_bin_hdr, VENUS_DMA_ALIGNMENT);
 	size_bin_res = ALIGN(size_bin_res, VENUS_DMA_ALIGNMENT);
 	size = size_bin_hdr + size_bin_res;
@@ -1385,10 +1165,13 @@ static inline u32 calculate_h265d_scratch_size(struct msm_vidc_inst *inst,
 	u32 aligned_height = ALIGN(height, BUFFER_ALIGNMENT_SIZE(16));
 	u32 size = 0;
 
-	if (!is_interlaced)
+	if (!is_interlaced) {
 		size = size_h265d_hw_bin_buffer(aligned_width, aligned_height);
-	else
+		size = size * NUM_OF_VPP_PIPES;
+	} else {
 		size = 0;
+	}
+
 	return size;
 }
 
@@ -1430,7 +1213,7 @@ static inline u32 calculate_mpeg2d_scratch_size(struct msm_vidc_inst *inst,
 }
 
 static inline u32 calculate_enc_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 lcu_size, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 work_mode, u32 lcu_size)
 {
 	u32 aligned_width, aligned_height, bitstream_size;
 	u32 total_bitbin_buffers = 0, size_singlePipe, bitbin_size = 0;
@@ -1450,21 +1233,14 @@ static inline u32 calculate_enc_scratch_size(struct msm_vidc_inst *inst,
 		bitstream_size = aligned_width * aligned_height * 3;
 		bitbin_size = ALIGN(bitstream_size, VENUS_DMA_ALIGNMENT);
 	}
-	if (aligned_width * aligned_height >= 7680 * 4320)
-		size_singlePipe = bitbin_size / 4;
-	else if (num_vpp_pipes > 2)
-		size_singlePipe = bitbin_size / 2;
-	else
-		size_singlePipe = bitbin_size;
-	if (inst->rc_type == RATE_CONTROL_LOSSLESS)
-		size_singlePipe <<= 1;
+	size_singlePipe = bitbin_size / 2;
 	size_singlePipe = ALIGN(size_singlePipe, VENUS_DMA_ALIGNMENT);
 	sao_bin_buffer_size = (64 * (((width + BUFFER_ALIGNMENT_SIZE(32)) *
 		(height + BUFFER_ALIGNMENT_SIZE(32))) >> 10)) + 384;
 	padded_bin_size = ALIGN(size_singlePipe, VENUS_DMA_ALIGNMENT);
 	size_singlePipe = sao_bin_buffer_size + padded_bin_size;
 	size_singlePipe = ALIGN(size_singlePipe, VENUS_DMA_ALIGNMENT);
-	bitbin_size = size_singlePipe * num_vpp_pipes;
+	bitbin_size = size_singlePipe * NUM_OF_VPP_PIPES;
 	size = ALIGN(bitbin_size, VENUS_DMA_ALIGNMENT) * total_bitbin_buffers
 			+ 512;
 
@@ -1472,56 +1248,50 @@ static inline u32 calculate_enc_scratch_size(struct msm_vidc_inst *inst,
 }
 
 static inline u32 calculate_h264e_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 work_mode)
 {
-	return calculate_enc_scratch_size(inst, width, height, work_mode, 16,
-		num_vpp_pipes);
+	return calculate_enc_scratch_size(inst, width, height, work_mode, 16);
 }
 
 static inline u32 calculate_h265e_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 work_mode)
 {
-	return calculate_enc_scratch_size(inst, width, height, work_mode, 32,
-		num_vpp_pipes);
+	return calculate_enc_scratch_size(inst, width, height, work_mode, 32);
 }
 
 static inline u32 calculate_vp8e_scratch_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 work_mode, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 work_mode)
 {
-	return calculate_enc_scratch_size(inst, width, height, work_mode, 16,
-		num_vpp_pipes);
+	return calculate_enc_scratch_size(inst, width, height, work_mode, 16);
 }
 
 static inline u32 calculate_h264d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes)
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled)
 {
 	u32 co_mv_size = 0, nonco_mv_size = 0;
 	u32 vpss_lb_size = 0;
 	u32 size = 0;
 
 	co_mv_size = hfi_iris2_h264d_comv_size(width, height, min_buf_count);
-	nonco_mv_size = hfi_iris2_h264d_non_comv_size(width, height,
-			num_vpp_pipes);
+	nonco_mv_size = hfi_iris2_h264d_non_comv_size(width, height);
 	if (split_mode_enabled)
-		vpss_lb_size = size_vpss_lb(width, height, num_vpp_pipes);
+		vpss_lb_size = size_vpss_lb(width, height);
+
 	size = co_mv_size + nonco_mv_size + vpss_lb_size;
 	return size;
 }
 
 static inline u32 calculate_h265d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes)
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled)
 {
 	u32 co_mv_size = 0, nonco_mv_size = 0;
 	u32 vpss_lb_size = 0;
 	u32 size = 0;
 
 	co_mv_size = hfi_iris2_h265d_comv_size(width, height, min_buf_count);
-	nonco_mv_size =
-		hfi_iris2_h265d_non_comv_size(width, height, num_vpp_pipes);
+	nonco_mv_size = hfi_iris2_h265d_non_comv_size(width, height);
 	if (split_mode_enabled)
-		vpss_lb_size = size_vpss_lb(width, height, num_vpp_pipes);
+		vpss_lb_size = size_vpss_lb(width, height);
 
 	size = co_mv_size + nonco_mv_size + vpss_lb_size +
 			HDR10_HIST_EXTRADATA_SIZE;
@@ -1535,17 +1305,16 @@ static inline u32 hfi_iris2_vp8d_comv_size(u32 width, u32 height,
 }
 
 static inline u32 calculate_vp8d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes)
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled)
 {
 	u32 vpss_lb_size = 0;
 	u32 size = 0;
 
 	size = hfi_iris2_vp8d_comv_size(width, height, 0);
 	size += ALIGN(SIZE_VPXD_LB_FE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_VPXD_LB_SE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_VP8D_LB_VSP_TOP(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_VPXD_LB_FE_TOP_CTRL(width, height),
@@ -1559,23 +1328,22 @@ static inline u32 calculate_vp8d_scratch1_size(struct msm_vidc_inst *inst,
 		ALIGN(SIZE_VP8D_LB_FE_TOP_DATA(width, height),
 			VENUS_DMA_ALIGNMENT);
 	if (split_mode_enabled)
-		vpss_lb_size = size_vpss_lb(width, height, num_vpp_pipes);
+		vpss_lb_size = size_vpss_lb(width, height);
 
 	size += vpss_lb_size;
 	return size;
 }
 
 static inline u32 calculate_vp9d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes)
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled)
 {
 	u32 vpss_lb_size = 0;
 	u32 size = 0;
 
 	size = ALIGN(SIZE_VPXD_LB_FE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_VPXD_LB_SE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_VP9D_LB_VSP_TOP(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_VPXD_LB_FE_TOP_CTRL(width, height),
@@ -1589,23 +1357,22 @@ static inline u32 calculate_vp9d_scratch1_size(struct msm_vidc_inst *inst,
 		ALIGN(SIZE_VP9D_LB_FE_TOP_DATA(width, height),
 			VENUS_DMA_ALIGNMENT);
 	if (split_mode_enabled)
-		vpss_lb_size = size_vpss_lb(width, height, num_vpp_pipes);
+		vpss_lb_size = size_vpss_lb(width, height);
 
 	size += vpss_lb_size + HDR10_HIST_EXTRADATA_SIZE;
 	return size;
 }
 
 static inline u32 calculate_mpeg2d_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled,
-	u32 num_vpp_pipes)
+	u32 width, u32 height, u32 min_buf_count, bool split_mode_enabled)
 {
 	u32 vpss_lb_size = 0;
 	u32 size = 0;
 
 	size = ALIGN(SIZE_VPXD_LB_FE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_VPXD_LB_SE_LEFT_CTRL(width, height),
-			VENUS_DMA_ALIGNMENT) * num_vpp_pipes +
+			VENUS_DMA_ALIGNMENT) * NUM_OF_VPP_PIPES +
 		ALIGN(SIZE_VP8D_LB_VSP_TOP(width, height),
 			VENUS_DMA_ALIGNMENT) +
 		ALIGN(SIZE_VPXD_LB_FE_TOP_CTRL(width, height),
@@ -1619,7 +1386,7 @@ static inline u32 calculate_mpeg2d_scratch1_size(struct msm_vidc_inst *inst,
 		ALIGN(SIZE_VP8D_LB_FE_TOP_DATA(width, height),
 			VENUS_DMA_ALIGNMENT);
 	if (split_mode_enabled)
-		vpss_lb_size = size_vpss_lb(width, height, num_vpp_pipes);
+		vpss_lb_size = size_vpss_lb(width, height);
 
 	size += vpss_lb_size;
 	return size;
@@ -1642,17 +1409,13 @@ static inline u32 calculate_enc_scratch1_size(struct msm_vidc_inst *inst,
 	u32 width_lcu_num, height_lcu_num, width_coded, height_coded;
 	u32 frame_num_lcu, linebuf_meta_recon_uv, topline_bufsize_fe_1stg_sao;
 	u32 output_mv_bufsize = 0, temp_scratch_mv_bufsize = 0;
-	u32 size, bit_depth, num_LCUMB;
-	u32 vpss_lineBufferSize_1 = 0;
-	u32 width_mb_num = ((width + 15) >> 4);
-	u32 height_mb_num = ((height + 15) >> 4);
+	u32 size, bit_depth;
 
 	width_lcu_num = ((width)+(lcu_size)-1) / (lcu_size);
 	height_lcu_num = ((height)+(lcu_size)-1) / (lcu_size);
 	frame_num_lcu = width_lcu_num * height_lcu_num;
 	width_coded = width_lcu_num * (lcu_size);
 	height_coded = height_lcu_num * (lcu_size);
-	num_LCUMB = (height_coded / lcu_size) * ((width_coded + lcu_size * 8) / lcu_size);
 	slice_info_bufsize = (256 + (frame_num_lcu << 4));
 	slice_info_bufsize = ALIGN(slice_info_bufsize, VENUS_DMA_ALIGNMENT);
 	line_buf_ctrl_size = ALIGN(width_coded, VENUS_DMA_ALIGNMENT);
@@ -1683,23 +1446,19 @@ static inline u32 calculate_enc_scratch1_size(struct msm_vidc_inst *inst,
 		(VENUS_DMA_ALIGNMENT + 16 * (width_coded >> 4));
 	topline_buf_ctrl_size_FE = ALIGN(topline_buf_ctrl_size_FE,
 		VENUS_DMA_ALIGNMENT);
-	leftline_buf_ctrl_size_FE = (((VENUS_DMA_ALIGNMENT + 64 *
+	leftline_buf_ctrl_size_FE = ((VENUS_DMA_ALIGNMENT + 64 *
 		(height_coded >> 4)) +
 		(VENUS_DMA_ALIGNMENT << (num_vpp_pipes - 1)) - 1) &
-		(~((VENUS_DMA_ALIGNMENT << (num_vpp_pipes - 1)) - 1)) * 1) *
+		(~((VENUS_DMA_ALIGNMENT << (num_vpp_pipes - 1)) - 1)) *
 		num_vpp_pipes;
-	leftline_buf_meta_recony = (VENUS_DMA_ALIGNMENT + 64 *
-		((height_coded) / (8 * (ten_bit ? 4 : 8))));
+	leftline_buf_meta_recony = ((VENUS_DMA_ALIGNMENT + 64 *
+		((height_coded) / (8 * (ten_bit ? 4 : 8)))) * num_vpp_pipes);
 	leftline_buf_meta_recony = ALIGN(leftline_buf_meta_recony,
 		VENUS_DMA_ALIGNMENT);
-	leftline_buf_meta_recony = leftline_buf_meta_recony *
-		num_vpp_pipes;
-	linebuf_meta_recon_uv = (VENUS_DMA_ALIGNMENT + 64 *
-		((height_coded) / (4 * (ten_bit ? 4 : 8))));
+	linebuf_meta_recon_uv = ((VENUS_DMA_ALIGNMENT + 64 *
+		((height_coded) / (4 * (ten_bit ? 4 : 8)))) * num_vpp_pipes);
 	linebuf_meta_recon_uv = ALIGN(linebuf_meta_recon_uv,
 		VENUS_DMA_ALIGNMENT);
-	linebuf_meta_recon_uv = linebuf_meta_recon_uv *
-		num_vpp_pipes;
 	line_buf_recon_pix_size = ((ten_bit ? 3 : 2) * width_coded);
 	line_buf_recon_pix_size = ALIGN(line_buf_recon_pix_size,
 		VENUS_DMA_ALIGNMENT);
@@ -1711,8 +1470,8 @@ static inline u32 calculate_enc_scratch1_size(struct msm_vidc_inst *inst,
 		BUFFER_ALIGNMENT_SIZE(32)));
 	col_mv_buf_size = ALIGN(col_mv_buf_size, VENUS_DMA_ALIGNMENT)
 		* (num_ref + 1);
-	h265e_colrcbuf_size = (((width_mb_num + 7) >> 3) *
-			16 * 2 * height_mb_num);
+	h265e_colrcbuf_size = (((width_lcu_num + 7) >> 3) *
+		16 * 2 * height_lcu_num);
 	if (num_vpp_pipes > 1)
 		h265e_colrcbuf_size = ALIGN(h265e_colrcbuf_size,
 			VENUS_DMA_ALIGNMENT) * num_vpp_pipes;
@@ -1748,14 +1507,12 @@ static inline u32 calculate_enc_scratch1_size(struct msm_vidc_inst *inst,
 	bse_reg_buffer_size = ((((512 << 3) + 7) & (~7)) * 4);
 	vpp_reg_buffer_size = ((((HFI_VENUS_VPPSG_MAX_REGISTERS << 3) + 31) &
 		(~31)) * 10);
-	lambda_lut_size = (256 * 11);
-	override_buffer_size = 16 * ((num_LCUMB + 7) >> 3);
+	lambda_lut_size = ((((52 << 1) + 7) & (~7)) * 11);
+	override_buffer_size = 16 * ((frame_num_lcu + 7) >> 3);
 	override_buffer_size = ALIGN(override_buffer_size,
 		VENUS_DMA_ALIGNMENT) * 2;
 	ir_buffer_size = (((frame_num_lcu << 1) + 7) & (~7)) * 3;
-	vpss_lineBufferSize_1 = ((((8192) >> 2) << 5) * num_vpp_pipes) + 64;
-	vpss_line_buf = (((((max(width_coded, height_coded) + 3) >> 2) << 5) + 256) * 16) +
-		vpss_lineBufferSize_1;
+	vpss_line_buf = ((((width_coded + 3) >> 2) << 5) + 256) * 16;
 	topline_bufsize_fe_1stg_sao = (16 * (width_coded >> 5));
 	topline_bufsize_fe_1stg_sao = ALIGN(topline_bufsize_fe_1stg_sao,
 		VENUS_DMA_ALIGNMENT);
@@ -1777,23 +1534,22 @@ static inline u32 calculate_enc_scratch1_size(struct msm_vidc_inst *inst,
 }
 
 static inline u32 calculate_h264e_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 num_ref, bool ten_bit)
 {
 	return calculate_enc_scratch1_size(inst, width, height, 16,
-		num_ref, ten_bit, num_vpp_pipes, false);
+		num_ref, ten_bit, NUM_OF_VPP_PIPES, false);
 }
 
 static inline u32 calculate_h265e_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 num_ref, bool ten_bit)
 {
 	return calculate_enc_scratch1_size(inst, width, height, 32,
-		num_ref, ten_bit, num_vpp_pipes, true);
+		num_ref, ten_bit, NUM_OF_VPP_PIPES, true);
 }
 
 static inline u32 calculate_vp8e_scratch1_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, u32 num_vpp_pipes)
+	u32 width, u32 height, u32 num_ref, bool ten_bit)
 {
-	(void)num_vpp_pipes;
 	return calculate_enc_scratch1_size(inst, width, height, 16,
 		num_ref, ten_bit, 1, false);
 }
@@ -1834,8 +1590,8 @@ static inline u32 hfi_ubwc_uv_metadata_plane_bufheight(u32 height,
 		tile_height_pels), metadata_height_multi);
 }
 
-static inline u32 hfi_iris2_enc_dpb_buffer_size(u32 width, u32 height,
-	bool ten_bit)
+static inline u32 calculate_enc_scratch2_size(struct msm_vidc_inst *inst,
+	u32 width, u32 height, u32 num_ref, bool ten_bit)
 {
 	u32 aligned_width, aligned_height, chroma_height, ref_buf_height;
 	u32 luma_size, chroma_size;
@@ -1860,6 +1616,7 @@ static inline u32 hfi_iris2_enc_dpb_buffer_size(u32 width, u32 height,
 			metadata_stride, meta_buf_height);
 		size = (aligned_height + chroma_height) * aligned_width +
 			meta_size_y + meta_size_c;
+		size = (size * (num_ref+3)) + 4096;
 	} else {
 		ref_buf_height = (height + (HFI_VENUS_HEIGHT_ALIGNMENT - 1))
 			& (~(HFI_VENUS_HEIGHT_ALIGNMENT - 1));
@@ -1892,29 +1649,7 @@ static inline u32 hfi_iris2_enc_dpb_buffer_size(u32 width, u32 height,
 		meta_size_c = hfi_ubwc_metadata_plane_buffer_size(
 			metadata_stride, meta_buf_height);
 		size = ref_buf_size + meta_size_y + meta_size_c;
-	}
-	return size;
-}
-
-static inline u32 calculate_enc_scratch2_size(struct msm_vidc_inst *inst,
-	u32 width, u32 height, u32 num_ref, bool ten_bit, bool downscale,
-	u32 rotation_val, u32 flip)
-{
-	u32 size;
-
-	size = hfi_iris2_enc_dpb_buffer_size(width, height, ten_bit);
-	size = size * (num_ref + 1) + 4096;
-	if (downscale && (rotation_val || flip)) {
-	/* VPSS output is always 128 x 32 aligned for 8-bit
-	 * and 192 x 16 aligned for 10-bit
-	 */
-		if (rotation_val == 90 || rotation_val == 270)
-			size += hfi_iris2_enc_dpb_buffer_size(height, width,
-					ten_bit);
-		else
-			size += hfi_iris2_enc_dpb_buffer_size(width, height,
-					ten_bit);
-		size += 4096;
+		size = (size * (num_ref+3)) + 4096;
 	}
 	return size;
 }

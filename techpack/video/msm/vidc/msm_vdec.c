@@ -673,13 +673,6 @@ int msm_vdec_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		 * should not overwrite the FW calculated buffer
 		 * count.
 		 */
-		rc = msm_vidc_calculate_buffer_counts(inst);
-		if (rc) {
-			s_vpr_e(inst->sid,
-				"%s failed to calculate buffer count\n",
-				__func__);
-			return rc;
-		}
 
 		rc = msm_vidc_check_session_supported(inst);
 		if (rc) {
@@ -894,13 +887,6 @@ int msm_vdec_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 			inst->flags |= VIDC_THUMBNAIL;
 
 		inst->batch.enable = is_batching_allowed(inst);
-		rc = msm_vidc_calculate_buffer_counts(inst);
-		if (rc) {
-			s_vpr_e(inst->sid,
-				"%s: failed to calculate thumbnail buffer count\n",
-				__func__);
-			return rc;
-		}
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_SECURE:
 		inst->flags &= ~VIDC_SECURE;
