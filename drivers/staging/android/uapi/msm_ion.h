@@ -81,6 +81,8 @@ enum ion_heap_ids {
  */
 #define ION_FLAG_ALLOW_NON_CONTIG       ION_BIT(28)
 
+#define ION_FLAG_CAM_ALLOC       ION_BIT(15)
+
 /**
  * Flag to use when allocating to indicate that a heap is secure.
  * Do NOT use BIT macro since it is defined in #ifdef __KERNEL__

@@ -11,11 +11,14 @@
 #ifndef CONFIG_ALLOC_BUFFERS_IN_4K_CHUNKS
 #if defined(CONFIG_IOMMU_IO_PGTABLE_ARMV7S)
 static const unsigned int orders[] = {8, 4, 0};
+static const unsigned int cam_reserved_counts[] = {800, 1500, 2700};
 #else
-static const unsigned int orders[] = {9, 4, 0};
+static const unsigned int orders[] = {8, 4, 0};
+static const unsigned int cam_reserved_counts[] = {870, 1500, 2720};
 #endif
 #else
 static const unsigned int orders[] = {0};
+static const unsigned int cam_reserved_counts[] = {0};
 #endif
 
 #define NUM_ORDERS ARRAY_SIZE(orders)
@@ -32,6 +35,8 @@ struct ion_system_heap {
 	struct ion_heap heap;
 	struct ion_page_pool *uncached_pools[MAX_ORDER];
 	struct ion_page_pool *cached_pools[MAX_ORDER];
+	struct ion_page_pool **cam_pools;
+//	struct ion_page_pool *cam_pools[MAX_ORDER];
 	/* worker threads to refill the pool */
 	struct task_struct *kworker[ION_MAX_NUM_KTHREADS];
 	struct ion_page_pool *secure_pools[VMID_LAST][MAX_ORDER];

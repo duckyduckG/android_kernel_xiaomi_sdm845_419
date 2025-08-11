@@ -455,6 +455,7 @@ struct page *ion_page_pool_alloc(struct ion_page_pool *a, bool *from_pool);
 void ion_page_pool_free(struct ion_page_pool *pool, struct page *page);
 
 struct ion_heap *get_ion_heap(int heap_id);
+void ion_page_pool_prealloc(struct ion_page_pool *pool, unsigned int reserve);
 struct page *ion_page_pool_alloc_pool_only(struct ion_page_pool *a);
 void ion_page_pool_free_immediate(struct ion_page_pool *pool,
 				  struct page *page);

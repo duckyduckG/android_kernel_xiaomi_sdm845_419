@@ -39,6 +39,8 @@
 #include "ion_secure_util.h"
 #include "compat_ion.h"
 
+static kuid_t cam_euid;
+
 static struct ion_device *internal_dev;
 static atomic_long_t total_heap_bytes;
 
@@ -1046,6 +1048,7 @@ struct dma_buf *ion_alloc_dmabuf(size_t len, unsigned int heap_id_mask,
 
 	pr_debug("%s: len %zu heap_id_mask %u flags %x\n", __func__,
 		 len, heap_id_mask, flags);
+
 	/*
 	 * traverse the list of heaps available in this system in priority
 	 * order.  If the heap type is supported by the client, and matches the
@@ -1092,6 +1095,20 @@ struct dma_buf *ion_alloc_dmabuf(size_t len, unsigned int heap_id_mask,
 	return dmabuf;
 }
 
+static bool is_cam_alloc(unsigned int heap_id_mask)
+{
+	if (ION_BIT(20) & heap_id_mask) {
+		if (!cam_euid.val)
+			cam_euid = current_euid();
+		return true;
+	}
+	if (!cam_euid.val)
+		return false;
+	if (uid_eq(current_euid(), cam_euid))
+		return true;
+	return false;
+}
+
 struct dma_buf *ion_alloc(size_t len, unsigned int heap_id_mask,
 			  unsigned int flags)
 {
@@ -1101,6 +1118,10 @@ struct dma_buf *ion_alloc(size_t len, unsigned int heap_id_mask,
 
 	pr_debug("%s: len %zu heap_id_mask %u flags %x\n", __func__,
 		 len, heap_id_mask, flags);
+
+	if (is_cam_alloc(heap_id_mask))
+		flags |= ION_FLAG_CAM_ALLOC;
+
 	/*
 	 * traverse the list of heaps available in this system in priority
 	 * order.  Check the heap type is supported.
