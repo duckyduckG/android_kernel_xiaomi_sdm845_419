@@ -968,44 +968,36 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 		break;
 	case CAM_IR_UPDATE: {
 		struct cam_sensor_i2c_reg_setting user_reg_setting;
-		struct cam_sensor_i2c_reg_array *i2c_reg_setting;
+		struct cam_sensor_i2c_reg_array *i2c_reg_setting = NULL;
 
-		rc = copy_from_user(&user_reg_setting,
-			    u64_to_user_ptr(cmd->handle),
-			    sizeof(user_reg_setting));
+		rc = copy_from_user(&user_reg_setting, (void __user *)(cmd->handle), sizeof(user_reg_setting));
 		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "Failed to copy user_reg_setting from user space\n");
+			CAM_ERR(CAM_SENSOR, "Copy data from user space failed\n");
 			goto release_mutex;
 		}
 
-		i2c_reg_setting = kcalloc(cmd->size,
-			  sizeof(*i2c_reg_setting),
-			  GFP_KERNEL);
+		i2c_reg_setting = kzalloc(sizeof(struct cam_sensor_i2c_reg_array) *
+			user_reg_setting.size, GFP_KERNEL);
 		if (!i2c_reg_setting) {
 			rc = -ENOMEM;
-			CAM_ERR(CAM_SENSOR, "Failed to allocate memory for i2c_reg_setting\n");
+			CAM_ERR(CAM_SENSOR, "kzalloc memory failed\n");
 			goto release_mutex;
-			}
-
-		rc = copy_from_user(i2c_reg_setting,
-			    u64_to_user_ptr((u64)(uintptr_t)user_reg_setting.reg_setting),
-			    cmd->size * sizeof(*i2c_reg_setting));
-		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "Failed to copy i2c_reg_setting from user space\n");
-			goto free_mem;
 		}
 
+		rc = copy_from_user(i2c_reg_setting, (void __user *)(user_reg_setting.reg_setting),
+			sizeof(struct cam_sensor_i2c_reg_array) * user_reg_setting.size);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "Copy i2c setting from user space failed\n");
+			kfree(i2c_reg_setting);
+			goto release_mutex;
+		}
 		user_reg_setting.reg_setting = i2c_reg_setting;
 
-		rc = camera_io_dev_write(&s_ctrl->io_master_info,
-			 &user_reg_setting);
-		if (rc < 0) {
+		rc = camera_io_dev_write(&s_ctrl->io_master_info, &user_reg_setting);
+		if (rc < 0)
 			CAM_ERR(CAM_SENSOR, "Write setting failed, rc = %d\n", rc);
-			goto free_mem;
-		}
-free_mem:
-	kfree(i2c_reg_setting);
-	i2c_reg_setting = NULL;
+
+		kfree(i2c_reg_setting);
 	}
 		break;
 	case CAM_IR_GET_POWER_STATE: {

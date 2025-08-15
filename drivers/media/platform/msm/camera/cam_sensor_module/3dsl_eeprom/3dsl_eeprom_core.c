@@ -507,7 +507,7 @@ int32_t sl_eeprom_write_eeprom_wrapper(struct sl_eeprom_ctrl_t *e_ctrl, void *ar
 		CAM_ERR(CAM_SL_EEPROM, "read eeprom error rc %d", rc);
 			goto	free_data;
 	}
-	rc =  camera_io_dev_read(&e_ctrl->io_master_info,
+	rc = (enum sl_eeprom_i2c_type) camera_io_dev_read(&e_ctrl->io_master_info,
 		reg_data_map.reg_setting[0].reg_addr,
 		&data_r, reg_data_map.addr_type,
 		CAMERA_SENSOR_I2C_TYPE_WORD);
