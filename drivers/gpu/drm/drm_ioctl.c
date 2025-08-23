@@ -495,9 +495,7 @@ static bool drm_master_filter(char *task_name)
 {
 	unsigned int i = 0;
 	bool ret = false;
-	//pr_debug("%s task_name:%s \n", __func__, task_name);
 	for (i=0; i<MAX_LIST_NUM; i++) {
-		//pr_debug("task_name:%s support:%s i:%d size:%zu\n", task_name, support_list[i], i, strlen(support_list[i]));
 		if (!strncmp(task_name, support_list[i], strlen(support_list[i]))) {
 			ret = true;
 			break;
@@ -505,6 +503,7 @@ static bool drm_master_filter(char *task_name)
 	}
 	return ret;
 }
+
 /*
  * Get version information
  *

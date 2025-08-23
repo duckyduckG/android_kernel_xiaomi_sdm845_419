@@ -19,6 +19,7 @@
 #include <linux/export.h>
 
 #include <drm/drm_device.h>
+#include <drm/drm_encoder.h>
 #include <drm/drm_sysfs.h>
 #include <drm/drmP.h>
 #include "drm_internal.h"
