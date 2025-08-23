@@ -102,6 +102,16 @@ struct pci_controller;
 #define DRM_SWITCH_POWER_CHANGING 2
 #define DRM_SWITCH_POWER_DYNAMIC_OFF 3
 
+/**
+*AOD brightness, hight brightness level 60nit, low brightness level 5nit
+*/
+#define DOZE_MIN_BRIGHTNESS_LEVEL	5
+enum {
+	DOZE_BRIGHTNESS_INVALID = 0,
+	DOZE_BRIGHTNESS_HBM,
+	DOZE_BRIGHTNESS_LBM,
+};
+
 /* returns true if currently okay to sleep */
 static inline bool drm_can_sleep(void)
 {

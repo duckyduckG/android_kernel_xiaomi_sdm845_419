@@ -482,6 +482,29 @@ static int drm_copy_field(char __user *buf, size_t *buf_len, const char *value)
 	return 0;
 }
 
+#define MAX_TASK_NAME_LEN 30
+#define MAX_LIST_NUM 4
+char support_list[MAX_LIST_NUM][MAX_TASK_NAME_LEN] = {
+		"displayfeature",
+		"DisplayFeature",
+		"disp_pcc"
+		"displayeffect"
+};
+
+static bool drm_master_filter(char *task_name)
+{
+	unsigned int i = 0;
+	bool ret = false;
+	//pr_debug("%s task_name:%s \n", __func__, task_name);
+	for (i=0; i<MAX_LIST_NUM; i++) {
+		//pr_debug("task_name:%s support:%s i:%d size:%zu\n", task_name, support_list[i], i, strlen(support_list[i]));
+		if (!strncmp(task_name, support_list[i], strlen(support_list[i]))) {
+			ret = true;
+			break;
+		}
+	}
+	return ret;
+}
 /*
  * Get version information
  *
@@ -528,6 +551,7 @@ int drm_version(struct drm_device *dev, void *data,
  */
 int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 {
+	struct task_struct *task = get_current();
 	/* ROOT_ONLY is only for CAP_SYS_ADMIN */
 	if (unlikely((flags & DRM_ROOT_ONLY) && !capable(CAP_SYS_ADMIN)))
 		return -EACCES;
@@ -544,8 +568,11 @@ int drm_ioctl_permit(u32 flags, struct drm_file *file_priv)
 
 	/* Render clients must be explicitly allowed */
 	if (unlikely(!(flags & DRM_RENDER_ALLOW) &&
-		     drm_is_render_client(file_priv)))
-		return -EACCES;
+		     !drm_is_current_master(file_priv))) {
+		if (!drm_master_filter(task->comm)) {
+			return -EACCES;
+		}
+	}
 
 	return 0;
 }
