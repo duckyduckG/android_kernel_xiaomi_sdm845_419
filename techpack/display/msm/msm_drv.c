@@ -718,7 +718,7 @@ static ssize_t idle_encoder_mask_store(struct device *device,
 	int rc;
 	unsigned long flags;
 
-	rc = kstrtouint(buf, 0, &encoder_mask);
+	rc = kstrtouint(buf, 10, &encoder_mask);
 	if (rc)
 		return rc;
 
