@@ -40,6 +40,7 @@
 #include "sde_core_irq.h"
 #include "sde_hw_top.h"
 #include "sde_hw_qdss.h"
+#include "dsi_drm.h"
 
 #define SDE_DEBUG_ENC(e, fmt, ...) SDE_DEBUG("enc%d " fmt,\
 		(e) ? (e)->base.base.id : -1, ##__VA_ARGS__)
@@ -1798,7 +1799,10 @@ void sde_encoder_helper_vsync_config(struct sde_encoder_phys *phys_enc,
 
 		vsync_cfg.pp_count = sde_enc->num_phys_encs;
 		vsync_cfg.frame_rate = sde_enc->mode_info.frame_rate;
-		vsync_cfg.vsync_source = vsync_source;
+		// vsync_cfg.vsync_source = vsync_source;
+		if (sde_enc->cur_master)
+			vsync_cfg.vsync_source =
+				sde_enc->cur_master->hw_pp->caps->te_source;
 		vsync_cfg.is_dummy = is_dummy;
 
 		hw_mdptop->ops.setup_vsync_source(hw_mdptop, &vsync_cfg);
@@ -5061,6 +5065,12 @@ void sde_encoder_kickoff(struct drm_encoder *drm_enc, bool is_error)
 		SDE_EVT32_VERBOSE(ktime_to_ms(wakeup_time));
 		mod_timer(&sde_enc->vsync_event_timer,
 				nsecs_to_jiffies(ktime_to_ns(wakeup_time)));
+	}
+
+	if (drm_enc->bridge && drm_enc->bridge->is_dsi_drm_bridge) {
+		struct dsi_bridge *c_bridge = container_of((drm_enc->bridge), struct dsi_bridge, base);
+		if (c_bridge && c_bridge->display && c_bridge->display->panel)
+			c_bridge->display->panel->kickoff_count++;
 	}
 
 	SDE_ATRACE_END("encoder_kickoff");
