@@ -500,6 +500,7 @@ struct sde_connector {
 	bool colorspace_updated;
 
 	bool last_cmd_tx_sts;
+	bool panel_dead_skip;
 	bool hdr_capable;
 
 	u8 cmd_rx_buf[MAX_CMD_RECEIVE_SIZE];

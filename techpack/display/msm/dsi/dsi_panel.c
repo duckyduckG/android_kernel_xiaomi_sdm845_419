@@ -24,7 +24,7 @@
 
 #include <drm/drm_notifier.h>
 #include <soc/qcom/socinfo.h>
-// TODO: add back set_skip_panel_dead
+
 /**
  * topology is currently defined by a set of following 3 values:
  * 1. num of layer mixers
@@ -796,8 +796,8 @@ static void dsi_panel_offon_mode_control(struct dsi_panel *panel, u32 bl_lvl)
 					dsi_panel_wled_cabc_ctrl(bl->wled, 0);
 				}
 
-				//set_skip_panel_dead(true);
-				//DSI_DEBUG("%s: set set_skip_panel_dead = true \n", __func__);
+				set_skip_panel_dead(true);
+				DSI_INFO("%s: set set_skip_panel_dead = true \n", __func__);
 				panel_disp_param_send_lock(panel, DISPLAY_OFF_MODE);
 
 				if (panel->disable_cabc)
@@ -809,8 +809,8 @@ static void dsi_panel_offon_mode_control(struct dsi_panel *panel, u32 bl_lvl)
 			DSI_DEBUG("%s: set display on when last_bl_lvl=0\n", __func__);
 			panel->dsi_panel_off_mode = false;
 
-			//set_skip_panel_dead(false);
-			//DSI_DEBUG("%s: set set_skip_panel_dead = false \n", __func__);
+			set_skip_panel_dead(false);
+			DSI_INFO("%s: set set_skip_panel_dead = false \n", __func__);
 			panel_disp_param_send_lock(panel, DISPLAY_ON_MODE);
 		}
 	}
@@ -5876,8 +5876,8 @@ int dsi_panel_enable(struct dsi_panel *panel)
 	mutex_unlock(&panel->panel_lock);
 	DSI_INFO("[LCD] %s: DSI_CMD_SET_ON\n", __func__);
 	if (panel->onoff_mode_enabled) {
-		//set_skip_panel_dead(false);
-		//DSI_DEBUG("%s: set set_skip_panel_dead = false \n", __func__);
+		set_skip_panel_dead(false);
+		DSI_INFO("%s: set set_skip_panel_dead = false \n", __func__);
 	}
 
 	return rc;
