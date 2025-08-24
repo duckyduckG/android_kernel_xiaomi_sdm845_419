@@ -755,6 +755,7 @@ static int dsi_panel_update_backlight(struct dsi_panel *panel,
 	return rc;
 }
 
+#ifdef CONFIG_BACKLIGHT_QCOM_SPMI_WLED
 static void dsi_panel_wled_cabc_ctrl(struct led_trigger *trig, bool enable)
 {
 	struct led_classdev *led_cdev;
@@ -767,6 +768,7 @@ static void dsi_panel_wled_cabc_ctrl(struct led_trigger *trig, bool enable)
 		spmi_wled_cabc(led_cdev, enable);
 	//read_unlock(&trig->leddev_list_lock);
 }
+#endif
 
 static void dsi_panel_offon_mode_control(struct dsi_panel *panel, u32 bl_lvl)
 {
