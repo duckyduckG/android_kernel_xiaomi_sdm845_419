@@ -2112,7 +2112,7 @@ static int wled_flash_setup(struct wled *wled)
 	return 0;
 }
 
-int qpnp_wled_cabc(struct led_classdev *led_cdev, bool enable)
+int spmi_wled_cabc(struct led_classdev *led_cdev, bool enable)
 {
 	struct wled *wled;
 	int rc = 0, i;
@@ -2142,7 +2142,7 @@ fail_cabc:
 	mutex_unlock(&wled->lock);
 	return rc;
 }
-EXPORT_SYMBOL_GPL(qpnp_wled_cabc);
+EXPORT_SYMBOL_GPL(spmi_wled_cabc);
 
 static int wled_configure(struct wled *wled, struct device *dev)
 {

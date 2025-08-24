@@ -764,7 +764,7 @@ static void dsi_panel_wled_cabc_ctrl(struct led_trigger *trig, bool enable)
 
 	//read_lock(&trig->leddev_list_lock);
 	list_for_each_entry(led_cdev, &trig->led_cdevs, trig_list)
-		qpnp_wled_cabc(led_cdev, enable);
+		spmi_wled_cabc(led_cdev, enable);
 	//read_unlock(&trig->leddev_list_lock);
 }
 
