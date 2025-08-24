@@ -141,7 +141,7 @@ extern void devm_led_classdev_unregister(struct device *parent,
 extern void led_classdev_suspend(struct led_classdev *led_cdev);
 extern void led_classdev_resume(struct led_classdev *led_cdev);
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-extern int qpnp_wled_cabc(struct led_classdev *led_cdev, bool enable);
+extern int spmi_wled_cabc(struct led_classdev *led_cdev, bool enable);
 #endif
 
 /**
