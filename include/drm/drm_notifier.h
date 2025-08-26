@@ -19,12 +19,14 @@ enum {
 };
 
 struct drm_notify_data {
+	bool is_primary;
 	void *data;
 };
 
 extern int drm_register_client(struct notifier_block *nb);
 extern int drm_unregister_client(struct notifier_block *nb);
 extern int drm_notifier_call_chain(unsigned long val, void *v);
+extern void report_esd_panel_dead(void);
 extern void set_skip_panel_dead(bool on);
 
 #endif /* _DRM_NOTIFIER_H */
