@@ -1716,6 +1716,8 @@ static int lookup_fast(struct nameidata *nd,
 	struct dentry *dentry, *parent = nd->path.dentry;
 	int status = 1;
 	int err;
+	bool negative;
+
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
 	bool is_nd_state_lookup_last_and_open_last = (nd->state & ND_STATE_LOOKUP_LAST || nd->state & ND_STATE_OPEN_LAST);
 #endif
@@ -1743,7 +1745,6 @@ static int lookup_fast(struct nameidata *nd,
 			}
 		}
 #endif
-		bool negative;
 		dentry = __d_lookup_rcu(parent, &nd->last, &seq);
 
 #ifdef CONFIG_KSU_SUSFS_SUS_PATH
