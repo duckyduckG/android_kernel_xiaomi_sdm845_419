@@ -196,16 +196,16 @@ static unsigned long get_level(struct cpufreq_cooling_device *cpufreq_cdev,
 
 
 static u32 cpu_freq_to_power(struct cpufreq_cooling_device *cpufreq_cdev,
-			     u32 freq)
+			     u32 power)
 {
 	int i;
 
-	for (i = cpufreq_cdev->max_level - 1; i >= 0; i--) {
-		if (freq > cpufreq_cdev->em->table[i].frequency)
+	for (i = cpufreq_cdev->max_level; i >= 0; i--) {
+		if (power >= cpufreq_cdev->em->table[i].power)
 			break;
 	}
 
-	return cpufreq_cdev->em->table[i + 1].power;
+	return cpufreq_cdev->em->table[i].frequency;
 }
 
 static u32 cpu_power_to_freq(struct cpufreq_cooling_device *cpufreq_cdev,
