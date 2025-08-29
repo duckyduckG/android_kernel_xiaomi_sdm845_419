@@ -212,6 +212,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
 	struct drm_device *dev = bridge->dev;
+	struct sde_connector *c_conn = to_sde_connector(c_bridge->display->drm_conn);
 	int event = 0;
 
 	if (dev->doze_state == DRM_BLANK_POWERDOWN) {
@@ -234,6 +235,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 
 	if (bridge->encoder->crtc->state->active_changed)
 		atomic_set(&c_bridge->display->panel->esd_recovery_pending, 0);
+	c_conn->panel_dead = false;
 
 	if (c_bridge->display->is_prim_display && atomic_read(&prim_panel_is_on)) {
 		cancel_delayed_work_sync(&prim_panel_work);
@@ -250,7 +252,6 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	}
 
 	drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
-
 	/* By this point mode should have been validated through mode_fixup */
 	rc = dsi_display_set_mode(c_bridge->display,
 			&(c_bridge->dsi_mode), 0x0);
