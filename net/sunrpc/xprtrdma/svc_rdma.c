@@ -82,7 +82,8 @@ struct workqueue_struct *svc_rdma_wq;
  * current value.
  */
 static int read_reset_stat(struct ctl_table *table, int write,
-			   void *buffer, size_t *lenp, loff_t *ppos)
+			   void __user *buffer, size_t *lenp,
+			   loff_t *ppos)
 {
 	atomic_t *stat = (atomic_t *)table->data;
 
@@ -104,8 +105,8 @@ static int read_reset_stat(struct ctl_table *table, int write,
 		len -= *ppos;
 		if (len > *lenp)
 			len = *lenp;
-		if (len)
-			memcpy(buffer, str_buf, len);
+		if (len && copy_to_user(buffer, str_buf, len))
+			return -EFAULT;
 		*lenp = len;
 		*ppos += len;
 	}

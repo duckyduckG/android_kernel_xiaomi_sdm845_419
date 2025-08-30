@@ -253,7 +253,8 @@ void timers_update_nohz(void)
 }
 
 int timer_migration_handler(struct ctl_table *table, int write,
-			    void *buffer, size_t *lenp, loff_t *ppos)
+			    void __user *buffer, size_t *lenp,
+			    loff_t *ppos)
 {
 	int ret;
 

@@ -107,15 +107,16 @@ int proc_lasat_ip(struct ctl_table *table, int write,
 		len = 0;
 		p = buffer;
 		while (len < *lenp) {
-			c = *p;
-			p++;
+			if (get_user(c, p++))
+				return -EFAULT;
 			if (c == 0 || c == '\n')
 				break;
 			len++;
 		}
 		if (len >= sizeof(ipbuf)-1)
 			len = sizeof(ipbuf) - 1;
-		memcpy(ipbuf, buffer, len);
+		if (copy_from_user(ipbuf, buffer, len))
+			return -EFAULT;
 		ipbuf[len] = 0;
 		*ppos += *lenp;
 		/* Now see if we can convert it to a valid IP */
@@ -133,9 +134,11 @@ int proc_lasat_ip(struct ctl_table *table, int write,
 		if (len > *lenp)
 			len = *lenp;
 		if (len)
-			memcpy(buffer, ipbuf, len);
+			if (copy_to_user(buffer, ipbuf, len))
+				return -EFAULT;
 		if (len < *lenp) {
-			*((char *)buffer + len) = '\n';
+			if (put_user('\n', ((char *) buffer) + len))
+				return -EFAULT;
 			len++;
 		}
 		*lenp = len;

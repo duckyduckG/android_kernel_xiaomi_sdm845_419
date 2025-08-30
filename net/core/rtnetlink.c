@@ -1380,12 +1380,13 @@ static u32 rtnl_xdp_prog_skb(struct net_device *dev)
 
 static u32 rtnl_xdp_prog_drv(struct net_device *dev)
 {
-	return dev_xdp_prog_id(dev, XDP_MODE_DRV);
+	return __dev_xdp_query(dev, dev->netdev_ops->ndo_bpf, XDP_QUERY_PROG);
 }
 
 static u32 rtnl_xdp_prog_hw(struct net_device *dev)
 {
-	return dev_xdp_prog_id(dev, XDP_MODE_HW);
+	return __dev_xdp_query(dev, dev->netdev_ops->ndo_bpf,
+			       XDP_QUERY_PROG_HW);
 }
 
 static int rtnl_xdp_report_one(struct sk_buff *skb, struct net_device *dev,
@@ -1795,9 +1796,7 @@ static const struct nla_policy ifla_port_policy[IFLA_PORT_MAX+1] = {
 };
 
 static const struct nla_policy ifla_xdp_policy[IFLA_XDP_MAX + 1] = {
-	[IFLA_XDP_UNSPEC]	= { .strict_start_type = IFLA_XDP_EXPECTED_FD },
 	[IFLA_XDP_FD]		= { .type = NLA_S32 },
-	[IFLA_XDP_EXPECTED_FD]	= { .type = NLA_S32 },
 	[IFLA_XDP_ATTACHED]	= { .type = NLA_U8 },
 	[IFLA_XDP_FLAGS]	= { .type = NLA_U32 },
 	[IFLA_XDP_PROG_ID]	= { .type = NLA_U32 },
@@ -2653,20 +2652,8 @@ static int do_setlink(const struct sk_buff *skb,
 		}
 
 		if (xdp[IFLA_XDP_FD]) {
-			int expected_fd = -1;
-
-			if (xdp_flags & XDP_FLAGS_REPLACE) {
-				if (!xdp[IFLA_XDP_EXPECTED_FD]) {
-					err = -EINVAL;
-					goto errout;
-				}
-				expected_fd =
-					nla_get_s32(xdp[IFLA_XDP_EXPECTED_FD]);
-			}
-
 			err = dev_change_xdp_fd(dev, extack,
 						nla_get_s32(xdp[IFLA_XDP_FD]),
-						expected_fd,
 						xdp_flags);
 			if (err)
 				goto errout;
@@ -2861,11 +2848,9 @@ int rtnl_configure_link(struct net_device *dev, const struct ifinfomsg *ifm)
 }
 EXPORT_SYMBOL(rtnl_configure_link);
 
-struct net_device *rtnl_create_link(struct net *net, const char *ifname,
-				    unsigned char name_assign_type,
-				    const struct rtnl_link_ops *ops,
-				    struct nlattr *tb[],
-				    struct netlink_ext_ack *extack)
+struct net_device *rtnl_create_link(struct net *net,
+	const char *ifname, unsigned char name_assign_type,
+	const struct rtnl_link_ops *ops, struct nlattr *tb[])
 {
 	struct net_device *dev;
 	unsigned int num_tx_queues = 1;
@@ -2881,15 +2866,11 @@ struct net_device *rtnl_create_link(struct net *net, const char *ifname,
 	else if (ops->get_num_rx_queues)
 		num_rx_queues = ops->get_num_rx_queues();
 
-	if (num_tx_queues < 1 || num_tx_queues > 4096) {
-		NL_SET_ERR_MSG(extack, "Invalid number of transmit queues");
+	if (num_tx_queues < 1 || num_tx_queues > 4096)
 		return ERR_PTR(-EINVAL);
-	}
 
-	if (num_rx_queues < 1 || num_rx_queues > 4096) {
-		NL_SET_ERR_MSG(extack, "Invalid number of receive queues");
+	if (num_rx_queues < 1 || num_rx_queues > 4096)
 		return ERR_PTR(-EINVAL);
-	}
 
 	dev = alloc_netdev_mqs(ops->priv_size, ifname, name_assign_type,
 			       ops->setup, num_tx_queues, num_rx_queues);
@@ -3159,7 +3140,7 @@ replay:
 		}
 
 		dev = rtnl_create_link(link_net ? : dest_net, ifname,
-				       name_assign_type, ops, tb, extack);
+				       name_assign_type, ops, tb);
 		if (IS_ERR(dev)) {
 			err = PTR_ERR(dev);
 			goto out;

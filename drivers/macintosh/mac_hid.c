@@ -182,7 +182,8 @@ static void mac_hid_stop_emulation(void)
 }
 
 static int mac_hid_toggle_emumouse(struct ctl_table *table, int write,
-				   void *buffer, size_t *lenp, loff_t *ppos)
+				   void __user *buffer, size_t *lenp,
+				   loff_t *ppos)
 {
 	int *valp = table->data;
 	int old_val = *valp;

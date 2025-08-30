@@ -106,20 +106,6 @@ static inline void __list_del(struct list_head * prev, struct list_head * next)
 	WRITE_ONCE(prev->next, next);
 }
 
-/*
- * Delete a list entry and clear the 'prev' pointer.
- *
- * This is a special-purpose list clearing method used in the networking code
- * for lists allocated as per-cpu, where we don't want to incur the extra
- * WRITE_ONCE() overhead of a regular list_del_init(). The code that uses this
- * needs to check the node 'prev' pointer instead of calling list_empty().
- */
-static inline void __list_del_clearprev(struct list_head *entry)
-{
-	__list_del(entry->prev, entry->next);
-	entry->prev = NULL;
-}
-
 /**
  * list_del - deletes entry from list.
  * @entry: the element to delete from the list.
@@ -700,16 +686,6 @@ static inline int hlist_unhashed(const struct hlist_node *h)
 	return !h->pprev;
 }
 
-/* This variant of hlist_unhashed() must be used in lockless contexts
- * to avoid potential load-tearing.
- * The READ_ONCE() is paired with the various WRITE_ONCE() in hlist
- * helpers that are defined below.
- */
-static inline int hlist_unhashed_lockless(const struct hlist_node *h)
-{
-	return !READ_ONCE(h->pprev);
-}
-
 static inline int hlist_empty(const struct hlist_head *h)
 {
 	return !READ_ONCE(h->first);
@@ -722,7 +698,7 @@ static inline void __hlist_del(struct hlist_node *n)
 
 	WRITE_ONCE(*pprev, next);
 	if (next)
-		WRITE_ONCE(next->pprev, pprev);
+		next->pprev = pprev;
 }
 
 static inline void hlist_del(struct hlist_node *n)
@@ -743,32 +719,32 @@ static inline void hlist_del_init(struct hlist_node *n)
 static inline void hlist_add_head(struct hlist_node *n, struct hlist_head *h)
 {
 	struct hlist_node *first = h->first;
-	WRITE_ONCE(n->next, first);
+	n->next = first;
 	if (first)
-		WRITE_ONCE(first->pprev, &n->next);
+		first->pprev = &n->next;
 	WRITE_ONCE(h->first, n);
-	WRITE_ONCE(n->pprev, &h->first);
+	n->pprev = &h->first;
 }
 
 /* next must be != NULL */
 static inline void hlist_add_before(struct hlist_node *n,
 					struct hlist_node *next)
 {
-	WRITE_ONCE(n->pprev, next->pprev);
-	WRITE_ONCE(n->next, next);
-	WRITE_ONCE(next->pprev, &n->next);
+	n->pprev = next->pprev;
+	n->next = next;
+	next->pprev = &n->next;
 	WRITE_ONCE(*(n->pprev), n);
 }
 
 static inline void hlist_add_behind(struct hlist_node *n,
 				    struct hlist_node *prev)
 {
-	WRITE_ONCE(n->next, prev->next);
+	n->next = prev->next;
 	WRITE_ONCE(prev->next, n);
-	WRITE_ONCE(n->pprev, &prev->next);
+	n->pprev = &prev->next;
 
 	if (n->next)
-		WRITE_ONCE(n->next->pprev, &n->next);
+		n->next->pprev  = &n->next;
 }
 
 /* after that we'll appear to be on some hlist and hlist_del will work */

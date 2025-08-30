@@ -609,7 +609,7 @@ static int tracepoint_module_notify(struct notifier_block *self,
 	case MODULE_STATE_UNFORMED:
 		break;
 	}
-	return notifier_from_errno(ret);
+	return ret;
 }
 
 static struct notifier_block tracepoint_module_nb = {

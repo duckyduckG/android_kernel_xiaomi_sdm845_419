@@ -540,11 +540,14 @@ void kernfs_put(struct kernfs_node *kn)
 	kfree_const(kn->name);
 
 	if (kn->iattr) {
+		if (kn->iattr->ia_secdata)
+			security_release_secctx(kn->iattr->ia_secdata,
+						kn->iattr->ia_secdata_len);
 		simple_xattrs_free(&kn->iattr->xattrs);
 	}
 	kfree(kn->iattr);
 	spin_lock(&kernfs_idr_lock);
-	idr_remove(&root->ino_idr, kernfs_ino(kn));
+	idr_remove(&root->ino_idr, kn->id.ino);
 	spin_unlock(&kernfs_idr_lock);
 	kmem_cache_free(kernfs_node_cache, kn);
 
@@ -650,8 +653,8 @@ static struct kernfs_node *__kernfs_new_node(struct kernfs_root *root,
 	idr_preload_end();
 	if (ret < 0)
 		goto err_out2;
-
-	kn->id = (u64)gen << 32 | ret;
+	kn->id.ino = ret;
+	kn->id.generation = gen;
 
 	/*
 	 * set ino first. This RELEASE is paired with atomic_inc_not_zero in
@@ -680,7 +683,7 @@ static struct kernfs_node *__kernfs_new_node(struct kernfs_root *root,
 	return kn;
 
  err_out3:
-	idr_remove(&root->ino_idr, kernfs_ino(kn));
+	idr_remove(&root->ino_idr, kn->id.ino);
  err_out2:
 	kmem_cache_free(kernfs_node_cache, kn);
  err_out1:
@@ -741,7 +744,7 @@ struct kernfs_node *kernfs_find_and_get_node_by_ino(struct kernfs_root *root,
 	 * before 'count'. So if 'count' is uptodate, 'ino' should be uptodate,
 	 * hence we can use 'ino' to filter stale node.
 	 */
-	if ((u32)kn->id != ino)
+	if (kn->id.ino != ino)
 		goto out;
 	rcu_read_unlock();
 
@@ -798,8 +801,9 @@ int kernfs_add_one(struct kernfs_node *kn)
 	/* Update timestamps on the parent */
 	ps_iattr = parent->iattr;
 	if (ps_iattr) {
-		ktime_get_real_ts64(&ps_iattr->ia_ctime);
-		ps_iattr->ia_mtime = ps_iattr->ia_ctime;
+		struct iattr *ps_iattrs = &ps_iattr->ia_iattr;
+		ktime_get_real_ts64(&ps_iattrs->ia_ctime);
+		ps_iattrs->ia_mtime = ps_iattrs->ia_ctime;
 	}
 
 	mutex_unlock(&kernfs_mutex);
@@ -1330,8 +1334,9 @@ static void __kernfs_remove(struct kernfs_node *kn)
 
 			/* update timestamps on the parent */
 			if (ps_iattr) {
-				ktime_get_real_ts64(&ps_iattr->ia_ctime);
-				ps_iattr->ia_mtime = ps_iattr->ia_ctime;
+				ktime_get_real_ts64(&ps_iattr->ia_iattr.ia_ctime);
+				ps_iattr->ia_iattr.ia_mtime =
+					ps_iattr->ia_iattr.ia_ctime;
 			}
 
 			kernfs_put(pos);
@@ -1680,7 +1685,7 @@ static int kernfs_fop_readdir(struct file *file, struct dir_context *ctx)
 		const char *name = pos->name;
 		unsigned int type = dt_type(pos);
 		int len = strlen(name);
-		ino_t ino = kernfs_ino(pos);
+		ino_t ino = pos->id.ino;
 
 		ctx->pos = pos->hash;
 		file->private_data = pos;

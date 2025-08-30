@@ -16,7 +16,6 @@
 #include <linux/bpf.h>
 
 #include <net/netlink.h>
-#include <net/sock.h>
 #include <net/pkt_sched.h>
 
 #include <linux/tc_act/tc_bpf.h>
@@ -57,8 +56,6 @@ static int tcf_bpf_act(struct sk_buff *skb, const struct tc_action *act,
 		bpf_compute_data_pointers(skb);
 		filter_res = BPF_PROG_RUN(filter, skb);
 	}
-	if (skb_sk_is_prefetched(skb) && filter_res != TC_ACT_OK)
-		skb_orphan(skb);
 	rcu_read_unlock();
 
 	/* A BPF program may overwrite the default action opcode.

@@ -11,7 +11,7 @@
  * See Documentation/security/keys/request-key.rst
  */
 
-#include <linux/export.h>
+#include <linux/module.h>
 #include <linux/sched.h>
 #include <linux/kmod.h>
 #include <linux/err.h>

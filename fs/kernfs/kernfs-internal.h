@@ -19,15 +19,11 @@
 #include <linux/kernfs.h>
 
 struct kernfs_iattrs {
-	kuid_t			ia_uid;
-	kgid_t			ia_gid;
-	struct timespec64	ia_atime;
-	struct timespec64	ia_mtime;
-	struct timespec64	ia_ctime;
+	struct iattr		ia_iattr;
+	void			*ia_secdata;
+	u32			ia_secdata_len;
 
 	struct simple_xattrs	xattrs;
-	atomic_t		nr_user_xattrs;
-	atomic_t		user_xattr_size;
 };
 
 /* +1 to avoid triggering overflow warning when negating it */
