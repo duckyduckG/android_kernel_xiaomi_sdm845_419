@@ -16,7 +16,26 @@
 
 DEFINE_SPINLOCK(reuseport_lock);
 
+#define REUSEPORT_MIN_ID 1
 static DEFINE_IDA(reuseport_ida);
+
+int reuseport_get_id(struct sock_reuseport *reuse)
+{
+	int id;
+
+	if (reuse->reuseport_id)
+		return reuse->reuseport_id;
+
+	id = ida_simple_get(&reuseport_ida, REUSEPORT_MIN_ID, 0,
+			    /* Called under reuseport_lock */
+			    GFP_ATOMIC);
+	if (id < 0)
+		return id;
+
+	reuse->reuseport_id = id;
+
+	return reuse->reuseport_id;
+}
 
 static struct sock_reuseport *__reuseport_alloc(unsigned int max_socks)
 {
@@ -36,7 +55,6 @@ static struct sock_reuseport *__reuseport_alloc(unsigned int max_socks)
 int reuseport_alloc(struct sock *sk, bool bind_inany)
 {
 	struct sock_reuseport *reuse;
-	int id, ret = 0;
 
 	/* bh lock used since this function call may precede hlist lock in
 	 * soft irq of receive path or setsockopt from process context
@@ -60,18 +78,10 @@ int reuseport_alloc(struct sock *sk, bool bind_inany)
 
 	reuse = __reuseport_alloc(INIT_SOCKS);
 	if (!reuse) {
-		ret = -ENOMEM;
-		goto out;
+		spin_unlock_bh(&reuseport_lock);
+		return -ENOMEM;
 	}
 
-	id = ida_alloc(&reuseport_ida, GFP_ATOMIC);
-	if (id < 0) {
-		kfree(reuse);
-		ret = id;
-		goto out;
-	}
-
-	reuse->reuseport_id = id;
 	reuse->socks[0] = sk;
 	reuse->num_socks = 1;
 	reuse->bind_inany = bind_inany;
@@ -80,7 +90,7 @@ int reuseport_alloc(struct sock *sk, bool bind_inany)
 out:
 	spin_unlock_bh(&reuseport_lock);
 
-	return ret;
+	return 0;
 }
 EXPORT_SYMBOL(reuseport_alloc);
 
@@ -126,7 +136,8 @@ static void reuseport_free_rcu(struct rcu_head *head)
 
 	reuse = container_of(head, struct sock_reuseport, rcu);
 	sk_reuseport_prog_free(rcu_dereference_protected(reuse->prog, 1));
-	ida_free(&reuseport_ida, reuse->reuseport_id);
+	if (reuse->reuseport_id)
+		ida_simple_remove(&reuseport_ida, reuse->reuseport_id);
 	kfree(reuse);
 }
 
@@ -187,15 +198,12 @@ void reuseport_detach_sock(struct sock *sk)
 	reuse = rcu_dereference_protected(sk->sk_reuseport_cb,
 					  lockdep_is_held(&reuseport_lock));
 
-	/* Notify the bpf side. The sk may be added to a sockarray
-	 * map. If so, sockarray logic will remove it from the map.
-	 *
-	 * Other bpf map types that work with reuseport, like sockmap,
-	 * don't need an explicit callback from here. They override sk
-	 * unhash/close ops to remove the sk from the map before we
-	 * get to this point.
+	/* At least one of the sk in this reuseport group is added to
+	 * a bpf map.  Notify the bpf side.  The bpf map logic will
+	 * remove the sk if it is indeed added to a bpf map.
 	 */
-	bpf_sk_reuseport_detach(sk);
+	if (reuse->reuseport_id)
+		bpf_sk_reuseport_detach(sk);
 
 	rcu_assign_pointer(sk->sk_reuseport_cb, NULL);
 

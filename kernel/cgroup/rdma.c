@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * RDMA resource limiting controller for cgroups.
  *
@@ -6,6 +5,10 @@
  * additional RDMA resources after a certain limit is reached.
  *
  * Copyright (C) 2016 Parav Pandit <pandit.parav@gmail.com>
+ *
+ * This file is subject to the terms and conditions of version 2 of the GNU
+ * General Public License. See the file COPYING in the main directory of the
+ * Linux distribution for more details.
  */
 
 #include <linux/bitops.h>

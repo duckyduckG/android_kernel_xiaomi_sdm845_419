@@ -252,8 +252,7 @@ static struct sk_buff *ip6_rcv_core(struct sk_buff *skb, struct net_device *dev,
 	rcu_read_unlock();
 
 	/* Must drop socket now because of tproxy. */
-	if (!skb_sk_is_prefetched(skb))
-		skb_orphan(skb);
+	skb_orphan(skb);
 
 	return skb;
 err:

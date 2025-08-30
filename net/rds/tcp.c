@@ -62,7 +62,8 @@ static atomic_t rds_tcp_unloading = ATOMIC_INIT(0);
 static struct kmem_cache *rds_tcp_conn_slab;
 
 static int rds_tcp_skbuf_handler(struct ctl_table *ctl, int write,
-				 void *buffer, size_t *lenp, loff_t *fpos);
+				 void __user *buffer, size_t *lenp,
+				 loff_t *fpos);
 
 static int rds_tcp_min_sndbuf = SOCK_MIN_SNDBUF;
 static int rds_tcp_min_rcvbuf = SOCK_MIN_RCVBUF;
@@ -667,7 +668,8 @@ static void rds_tcp_sysctl_reset(struct net *net)
 }
 
 static int rds_tcp_skbuf_handler(struct ctl_table *ctl, int write,
-				 void *buffer, size_t *lenp, loff_t *fpos)
+				 void __user *buffer, size_t *lenp,
+				 loff_t *fpos)
 {
 	struct net *net = current->nsproxy->net_ns;
 	int err;

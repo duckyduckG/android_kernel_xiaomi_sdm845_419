@@ -2018,8 +2018,12 @@ static int qede_start_queues(struct qede_dev *edev, bool clear_stats)
 			if (rc)
 				goto out;
 
-			bpf_prog_add(edev->xdp_prog, 1);
-			fp->rxq->xdp_prog = edev->xdp_prog;
+			fp->rxq->xdp_prog = bpf_prog_add(edev->xdp_prog, 1);
+			if (IS_ERR(fp->rxq->xdp_prog)) {
+				rc = PTR_ERR(fp->rxq->xdp_prog);
+				fp->rxq->xdp_prog = NULL;
+				goto out;
+			}
 		}
 
 		if (fp->type & QEDE_FASTPATH_TX) {

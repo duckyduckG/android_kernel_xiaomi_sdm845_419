@@ -16,13 +16,12 @@
  *	  using a rbtree tree.
  */
 #include <linux/slab.h>
-#include <linux/init.h>
+#include <linux/module.h>
 #include <linux/spinlock.h>
 #include <linux/rbtree.h>
 #include <linux/file.h>
 #include <linux/uaccess.h>
 #include <linux/security.h>
-#include <linux/lsm_hooks.h>
 #include "integrity.h"
 
 static struct rb_root integrity_iint_tree = RB_ROOT;
@@ -204,10 +203,7 @@ static int __init integrity_iintcache_init(void)
 			      0, SLAB_PANIC, iint_init_once);
 	return 0;
 }
-DEFINE_LSM(integrity) = {
-	.name = "integrity",
-	.init = integrity_iintcache_init,
-};
+security_initcall(integrity_iintcache_init);
 
 
 /*

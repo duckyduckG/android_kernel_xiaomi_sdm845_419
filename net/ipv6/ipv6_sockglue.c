@@ -466,7 +466,7 @@ static int do_ipv6_setsockopt(struct sock *sk, int level, int optname,
 				struct ipv6_sr_hdr *srh = (struct ipv6_sr_hdr *)
 							  opt->srcrt;
 
-				if (!seg6_validate_srh(srh, optlen, false))
+				if (!seg6_validate_srh(srh, optlen))
 					goto sticky_done;
 				break;
 			}

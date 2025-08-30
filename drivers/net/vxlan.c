@@ -20,7 +20,6 @@
 #include <linux/ethtool.h>
 #include <net/arp.h>
 #include <net/ndisc.h>
-#include <net/ipv6_stubs.h>
 #include <net/ip.h>
 #include <net/icmp.h>
 #include <net/rtnetlink.h>
@@ -3730,7 +3729,7 @@ struct net_device *vxlan_dev_create(struct net *net, const char *name,
 	memset(&tb, 0, sizeof(tb));
 
 	dev = rtnl_create_link(net, name, name_assign_type,
-			       &vxlan_link_ops, tb, NULL);
+			       &vxlan_link_ops, tb);
 	if (IS_ERR(dev))
 		return dev;
 
@@ -3782,12 +3781,10 @@ static int vxlan_netdevice_event(struct notifier_block *unused,
 	struct vxlan_net *vn = net_generic(dev_net(dev), vxlan_net_id);
 
 	if (event == NETDEV_UNREGISTER) {
-		if (!dev->udp_tunnel_nic_info)
-			vxlan_offload_rx_ports(dev, false);
+		vxlan_offload_rx_ports(dev, false);
 		vxlan_handle_lowerdev_unregister(vn, dev);
 	} else if (event == NETDEV_REGISTER) {
-		if (!dev->udp_tunnel_nic_info)
-			vxlan_offload_rx_ports(dev, true);
+		vxlan_offload_rx_ports(dev, true);
 	} else if (event == NETDEV_UDP_TUNNEL_PUSH_INFO ||
 		   event == NETDEV_UDP_TUNNEL_DROP_INFO) {
 		vxlan_offload_rx_ports(dev, event == NETDEV_UDP_TUNNEL_PUSH_INFO);

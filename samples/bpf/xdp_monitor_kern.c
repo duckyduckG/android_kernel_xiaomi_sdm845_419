@@ -222,12 +222,14 @@ struct bpf_map_def SEC("maps") devmap_xmit_cnt = {
  */
 struct devmap_xmit_ctx {
 	u64 __pad;		// First 8 bytes are not accessible by bpf code
-	int from_ifindex;	//	offset:8;  size:4; signed:1;
+	int map_id;		//	offset:8;  size:4; signed:1;
 	u32 act;		//	offset:12; size:4; signed:0;
-	int to_ifindex; 	//	offset:16; size:4; signed:1;
+	u32 map_index;		//	offset:16; size:4; signed:0;
 	int drops;		//	offset:20; size:4; signed:1;
 	int sent;		//	offset:24; size:4; signed:1;
-	int err;		//	offset:28; size:4; signed:1;
+	int from_ifindex;	//	offset:28; size:4; signed:1;
+	int to_ifindex;		//	offset:32; size:4; signed:1;
+	int err;		//	offset:36; size:4; signed:1;
 };
 
 SEC("tracepoint/xdp/xdp_devmap_xmit")

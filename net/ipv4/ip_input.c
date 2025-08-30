@@ -495,8 +495,7 @@ static struct sk_buff *ip_rcv_core(struct sk_buff *skb, struct net *net)
 	IPCB(skb)->iif = skb->skb_iif;
 
 	/* Must drop socket now because of tproxy. */
-	if (!skb_sk_is_prefetched(skb))
-		skb_orphan(skb);
+	skb_orphan(skb);
 
 	return skb;
 

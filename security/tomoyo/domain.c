@@ -678,7 +678,6 @@ out:
  */
 int tomoyo_find_next_domain(struct linux_binprm *bprm)
 {
-	struct tomoyo_domain_info **blob;
 	struct tomoyo_domain_info *old_domain = tomoyo_domain();
 	struct tomoyo_domain_info *domain = NULL;
 	const char *original_name = bprm->filename;
@@ -847,8 +846,7 @@ force_jump_domain:
 		domain = old_domain;
 	/* Update reference count on "struct tomoyo_domain_info". */
 	atomic_inc(&domain->users);
-	blob = tomoyo_cred(bprm->cred);
-	*blob = domain;
+	bprm->cred->security = domain;
 	kfree(exename.name);
 	if (!retval) {
 		ee->r.domain = domain;

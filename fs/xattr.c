@@ -938,7 +938,6 @@ int simple_xattr_get(struct simple_xattrs *xattrs, const char *name,
  * @value: value of the xattr. If %NULL, will remove the attribute.
  * @size: size of the new xattr
  * @flags: %XATTR_{CREATE|REPLACE}
- * @removed_size: returns size of the removed xattr, -1 if none removed
  *
  * %XATTR_CREATE is set, the xattr shouldn't exist already; otherwise fails
  * with -EEXIST.  If %XATTR_REPLACE is set, the xattr should exist;
@@ -947,8 +946,7 @@ int simple_xattr_get(struct simple_xattrs *xattrs, const char *name,
  * Returns 0 on success, -errno on failure.
  */
 int simple_xattr_set(struct simple_xattrs *xattrs, const char *name,
-		     const void *value, size_t size, int flags,
-		     ssize_t *removed_size)
+		     const void *value, size_t size, int flags)
 {
 	struct simple_xattr *xattr;
 	struct simple_xattr *new_xattr = NULL;
@@ -975,12 +973,8 @@ int simple_xattr_set(struct simple_xattrs *xattrs, const char *name,
 				err = -EEXIST;
 			} else if (new_xattr) {
 				list_replace(&xattr->list, &new_xattr->list);
-				if (removed_size)
-					*removed_size = xattr->size;
 			} else {
 				list_del(&xattr->list);
-				if (removed_size)
-					*removed_size = xattr->size;
 			}
 			goto out;
 		}
@@ -992,9 +986,6 @@ int simple_xattr_set(struct simple_xattrs *xattrs, const char *name,
 		list_add(&new_xattr->list, &xattrs->head);
 		xattr = NULL;
 	}
-
-	if (removed_size)
-		*removed_size = -1;
 out:
 	spin_unlock(&xattrs->lock);
 	if (xattr) {
