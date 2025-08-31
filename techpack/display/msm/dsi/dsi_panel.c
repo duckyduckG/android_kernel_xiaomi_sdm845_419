@@ -6107,9 +6107,8 @@ ssize_t dsi_panel_disp_count_get(struct dsi_display *display, char *buf)
 	return ret;
 }
 
-void dsi_panel_doubleclick_enable(bool on) {
-	struct dsi_display *primary_display = get_main_display();
-	if (primary_display && primary_display->panel)
-		primary_display->panel->tddi_doubleclick_flag = on;
+void dsi_panel_doubleclick_enable(bool on)
+{
+	g_panel->tddi_doubleclick_flag = on;
 }
 EXPORT_SYMBOL(dsi_panel_doubleclick_enable);
