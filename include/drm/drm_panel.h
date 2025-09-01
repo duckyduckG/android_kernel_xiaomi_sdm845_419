@@ -221,6 +221,7 @@ static inline int drm_panel_get_modes(struct drm_panel *panel)
 
 void drm_panel_init(struct drm_panel *panel);
 // Xiaomi
+void drm_panel_reset_skip_enable(bool enable);
 void drm_dsi_ulps_enable(bool enable);
 void drm_dsi_ulps_suspend_enable(bool enable);
 // Xiaomi

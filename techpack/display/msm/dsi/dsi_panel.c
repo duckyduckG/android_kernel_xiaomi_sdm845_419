@@ -363,7 +363,13 @@ static int dsi_panel_gpio_release(struct dsi_panel *panel)
 	return rc;
 }
 
- void drm_dsi_ulps_enable(bool enable)
+void drm_panel_reset_skip_enable(bool enable)
+{
+	if (g_panel)
+		g_panel->panel_reset_skip = enable;
+}
+
+void drm_dsi_ulps_enable(bool enable)
 {
 	if (g_panel) {
 		g_panel->ulps_feature_enabled = enable;
@@ -496,6 +502,18 @@ static int dsi_panel_power_on(struct dsi_panel *panel)
 {
 	int rc = 0;
 
+	if (g_panel->panel_reset_skip) {
+		pr_info("%s: panel reset skip\n", __func__);
+
+		/*if (panel->off_keep_reset) {
+			rc = dsi_panel_reset(panel);
+			if (rc) {
+				pr_err("[%s] failed to reset panel, rc=%d\n", panel->name, rc);
+			}
+		}*/
+		return rc;
+	}
+
 	if (!panel->tddi_doubleclick_flag)
 	rc = dsi_pwr_enable_regulator(&panel->power_info, true);
 	if (rc) {
@@ -542,12 +560,17 @@ static int dsi_panel_power_off(struct dsi_panel *panel)
 {
 	int rc = 0;
 
-	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
-		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
+	if (g_panel->panel_reset_skip) {
+			pr_info("%s: panel reset skip\n", __func__);
+			return rc;
+	}
 
 	if (!panel->tddi_doubleclick_flag)
 	if (gpio_is_valid(panel->reset_config.reset_gpio))
 		gpio_set_value(panel->reset_config.reset_gpio, 0);
+
+	if (gpio_is_valid(panel->reset_config.disp_en_gpio))
+		gpio_set_value(panel->reset_config.disp_en_gpio, 0);
 
 	if (gpio_is_valid(panel->reset_config.lcd_mode_sel_gpio))
 		gpio_set_value(panel->reset_config.lcd_mode_sel_gpio, 0);
