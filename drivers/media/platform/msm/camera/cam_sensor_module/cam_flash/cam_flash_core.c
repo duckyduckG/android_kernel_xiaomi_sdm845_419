@@ -497,7 +497,7 @@ int cam_flash_parser(struct cam_flash_ctrl *fctrl, void *arg)
 	}
 
 	rc = cam_mem_get_cpu_buf(config.packet_handle,
-		&generic_ptr, &len_of_buffer);
+		(uint64_t *)&generic_ptr, &len_of_buffer);
 	if (rc) {
 		CAM_ERR(CAM_FLASH, "Failed in getting the buffer : %d", rc);
 		return rc;
@@ -522,7 +522,7 @@ int cam_flash_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		fctrl->flash_init_setting.cmn_attr.is_settings_valid = true;
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 		rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle,
-			&generic_ptr, &len_of_buffer);
+			(uint64_t *)&generic_ptr, &len_of_buffer);
 		cmd_buf = (uint32_t *)(generic_ptr +
 			cmd_desc->offset);
 		cam_flash_info = (struct cam_flash_init *)cmd_buf;
@@ -593,7 +593,7 @@ int cam_flash_parser(struct cam_flash_ctrl *fctrl, void *arg)
 			true;
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 		rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle,
-			&generic_ptr, &len_of_buffer);
+			(uint64_t *)&generic_ptr, &len_of_buffer);
 		cmd_buf = (uint32_t *)(generic_ptr +
 			cmd_desc->offset);
 
@@ -649,7 +649,7 @@ int cam_flash_parser(struct cam_flash_ctrl *fctrl, void *arg)
 		fctrl->nrt_info.cmn_attr.is_settings_valid = true;
 		cmd_desc = (struct cam_cmd_buf_desc *)(offset);
 		rc = cam_mem_get_cpu_buf(cmd_desc->mem_handle,
-			&generic_ptr, &len_of_buffer);
+			(uint64_t *)&generic_ptr, &len_of_buffer);
 		cmd_buf = (uint32_t *)(generic_ptr +
 			cmd_desc->offset);
 		cmn_hdr = (struct common_header *)cmd_buf;

@@ -49,8 +49,8 @@ static int cam_jpeg_mgr_process_irq(void *priv, void *data)
 	struct cam_jpeg_hw_ctx_data *ctx_data = NULL;
 	struct cam_hw_done_event_data buf_data;
 	struct cam_jpeg_set_irq_cb irq_cb;
-	uintptr_t dev_type = 0;
-	uintptr_t kaddr;
+	uint32_t dev_type = 0;
+	uint64_t kaddr;
 	uint32_t *cmd_buf_kaddr;
 	size_t cmd_buf_len;
 	struct cam_jpeg_config_inout_param_info *p_params;
@@ -265,7 +265,7 @@ static int cam_jpeg_insert_cdm_change_base(
 	struct cam_cdm_bl_request *cdm_cmd;
 	uint32_t size;
 	uint32_t mem_cam_base;
-	uintptr_t iova_addr;
+	uint64_t iova_addr;
 	uint32_t *ch_base_iova_addr;
 	size_t ch_base_len;
 
@@ -1391,8 +1391,7 @@ num_dev_failed:
 	return rc;
 }
 
-int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
-	int *iommu_hdl)
+int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl)
 {
 	int i, rc;
 	uint32_t num_dev;
@@ -1471,9 +1470,6 @@ int cam_jpeg_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 		CAM_ERR(CAM_JPEG, "setup work qs failed  %d", rc);
 		goto cdm_iommu_failed;
 	}
-
-	if (iommu_hdl)
-		*iommu_hdl = g_jpeg_hw_mgr.iommu_hdl;
 
 	return rc;
 
