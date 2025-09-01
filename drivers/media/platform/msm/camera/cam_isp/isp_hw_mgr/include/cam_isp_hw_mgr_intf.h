@@ -182,6 +182,6 @@ struct cam_isp_hw_cmd_args {
  * @iommu_hdl:          Iommu handle to be returned
  */
 int cam_isp_hw_mgr_init(struct device_node *of_node,
-	struct cam_hw_mgr_intf *hw_mgr);
+	struct cam_hw_mgr_intf *hw_mgr, int *iommu_hdl);
 
 #endif /* __CAM_ISP_HW_MGR_INTF_H__ */

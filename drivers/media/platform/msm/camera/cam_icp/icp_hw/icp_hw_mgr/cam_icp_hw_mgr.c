@@ -1889,7 +1889,7 @@ static int cam_icp_alloc_shared_mem(struct cam_mem_mgr_memory_desc *qtbl)
 static int cam_icp_allocate_fw_mem(void)
 {
 	int rc;
-	uint64_t kvaddr;
+	uintptr_t kvaddr;
 	size_t len;
 	dma_addr_t iova;
 
@@ -1905,6 +1905,28 @@ static int cam_icp_allocate_fw_mem(void)
 
 	CAM_DBG(CAM_ICP, "kva: %zX, iova: %llx, len: %zu",
 		kvaddr, iova, len);
+
+	return rc;
+}
+
+static int cam_icp_get_io_mem_info(void)
+{
+	int rc;
+	size_t len, discard_iova_len;
+	dma_addr_t iova, discard_iova_start;
+
+	rc = cam_smmu_get_io_region_info(icp_hw_mgr.iommu_hdl,
+		&iova, &len, &discard_iova_start, &discard_iova_len);
+	if (rc)
+		return rc;
+
+	icp_hw_mgr.hfi_mem.io_mem.iova_len = len;
+	icp_hw_mgr.hfi_mem.io_mem.iova_start = iova;
+	icp_hw_mgr.hfi_mem.io_mem.discard_iova_start = discard_iova_start;
+	icp_hw_mgr.hfi_mem.io_mem.discard_iova_len = discard_iova_len;
+
+	CAM_DBG(CAM_ICP, "iova: %llx, len: %zu discard iova %llx len %llx",
+		iova, len, discard_iova_start, discard_iova_len);
 
 	return rc;
 }
@@ -1957,7 +1979,15 @@ static int cam_icp_allocate_hfi_mem(void)
 		goto sec_heap_alloc_failed;
 	}
 
+	rc = cam_icp_get_io_mem_info();
+	if (rc) {
+		CAM_ERR(CAM_ICP, "Unable to get I/O region info");
+		goto get_io_mem_failed;
+	}
+
 	return rc;
+get_io_mem_failed:
+	cam_mem_mgr_free_memory_region(&icp_hw_mgr.hfi_mem.sec_heap);
 sec_heap_alloc_failed:
 	cam_mem_mgr_release_mem(&icp_hw_mgr.hfi_mem.dbg_q);
 dbg_q_alloc_failed:
@@ -2904,10 +2934,10 @@ static int cam_icp_mgr_process_cmd_desc(struct cam_icp_hw_mgr *hw_mgr,
 	int rc = 0;
 	int i, j, k;
 	int num_cmd_buf = 0;
-	uint64_t addr;
+	dma_addr_t addr;
 	size_t len;
 	struct cam_cmd_buf_desc *cmd_desc = NULL;
-	uint64_t cpu_addr = 0;
+	uintptr_t cpu_addr = 0;
 	struct ipe_frame_process_data *frame_process_data = NULL;
 	struct bps_frame_process_data *bps_frame_process_data = NULL;
 
@@ -4138,7 +4168,8 @@ cmd_work_failed:
 	return rc;
 }
 
-int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl)
+int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
+	int *iommu_hdl)
 {
 	int i, rc = 0;
 	struct cam_hw_mgr_intf *hw_mgr_intf;
@@ -4197,6 +4228,9 @@ int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl)
 	rc = cam_icp_mgr_create_wq();
 	if (rc)
 		goto icp_wq_create_failed;
+
+	if (iommu_hdl)
+		*iommu_hdl = icp_hw_mgr.iommu_hdl;
 
 	init_completion(&icp_hw_mgr.a5_complete);
 	return rc;

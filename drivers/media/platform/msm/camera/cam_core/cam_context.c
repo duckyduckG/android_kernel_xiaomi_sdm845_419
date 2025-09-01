@@ -215,6 +215,32 @@ int cam_context_handle_crm_process_evt(struct cam_context *ctx,
 	return rc;
 }
 
+int cam_context_dump_pf_info(struct cam_context *ctx, unsigned long iova,
+	uint32_t buf_info)
+{
+	int rc = 0;
+
+	if (!ctx->state_machine) {
+		CAM_ERR(CAM_CORE, "Context is not ready");
+		return -EINVAL;
+	}
+
+	mutex_lock(&ctx->ctx_mutex);
+	if ((ctx->state > CAM_CTX_AVAILABLE) &&
+		(ctx->state < CAM_CTX_STATE_MAX)) {
+		if (ctx->state_machine[ctx->state].pagefault_ops) {
+			rc = ctx->state_machine[ctx->state].pagefault_ops(
+				ctx, iova, buf_info);
+		} else {
+			CAM_WARN(CAM_CORE, "No dump ctx in dev %d, state %d",
+				ctx->dev_hdl, ctx->state);
+		}
+	}
+	mutex_unlock(&ctx->ctx_mutex);
+
+	return rc;
+}
+
 int cam_context_handle_acquire_dev(struct cam_context *ctx,
 	struct cam_acquire_dev_cmd *cmd)
 {
@@ -347,7 +373,7 @@ int cam_context_handle_start_dev(struct cam_context *ctx,
 {
 	int rc = 0;
 
-	if (!ctx->state_machine) {
+	if (!ctx || !ctx->state_machine) {
 		CAM_ERR(CAM_CORE, "Context is not ready");
 		return -EINVAL;
 	}
@@ -376,7 +402,7 @@ int cam_context_handle_stop_dev(struct cam_context *ctx,
 {
 	int rc = 0;
 
-	if (!ctx->state_machine) {
+	if (!ctx || !ctx->state_machine) {
 		CAM_ERR(CAM_CORE, "Context is not ready");
 		return -EINVAL;
 	}

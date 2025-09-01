@@ -14,7 +14,7 @@ int cam_packet_util_get_cmd_mem_addr(int handle, uint32_t **buf_addr,
 	size_t *len)
 {
 	int rc = 0;
-	uint64_t kmd_buf_addr = 0;
+	uintptr_t kmd_buf_addr = 0;
 
 	rc = cam_mem_get_cpu_buf(handle, &kmd_buf_addr, len);
 	if (rc) {
@@ -126,8 +126,8 @@ int cam_packet_util_process_patches(struct cam_packet *packet,
 	int32_t iommu_hdl, int32_t sec_mmu_hdl)
 {
 	struct cam_patch_desc *patch_desc = NULL;
-	uint64_t iova_addr;
-	uint64_t  cpu_addr;
+	dma_addr_t iova_addr;
+	uintptr_t  cpu_addr = 0;
 	uint32_t   temp;
 	uint32_t  *dst_cpu_addr;
 	uint32_t  *src_buf_iova_addr;
@@ -190,7 +190,7 @@ int cam_packet_util_process_generic_cmd_buffer(
 	cam_packet_generic_blob_handler blob_handler_cb, void *user_data)
 {
 	int       rc = 0;
-	uint64_t  cpu_addr = 0;
+	uintptr_t  cpu_addr = 0;
 	size_t    buf_size;
 	uint32_t *blob_ptr;
 	uint32_t  blob_type, blob_size, blob_block_size, len_read;

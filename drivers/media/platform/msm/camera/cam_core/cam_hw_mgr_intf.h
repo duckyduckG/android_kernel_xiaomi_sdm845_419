@@ -40,6 +40,10 @@ enum cam_context_dump_id {
 typedef int (*cam_hw_event_cb_func)(void *context, uint32_t evt_id,
 	void *evt_data);
 
+/* hardware page fault callback function type */
+typedef int (*cam_hw_pagefault_cb_func)(void *context, unsigned long iova,
+	uint32_t buf_info);
+
 /* ctx dump callback function type */
 typedef int (*cam_ctx_info_dump_cb_func)(void *context,
 	enum cam_context_dump_id dump_id);
