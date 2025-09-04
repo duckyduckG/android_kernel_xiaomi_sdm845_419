@@ -98,7 +98,6 @@ struct pl_data {
 	struct notifier_block	nb;
 	struct charger_param	*chg_param;
 	bool			pl_disable;
-	bool			cp_disabled;
 	int			taper_entry_fv;
 	int			main_fcc_max;
 	enum power_supply_type	charger_type;
@@ -682,24 +681,6 @@ static void get_main_fcc_config(struct pl_data *chip, int *total_fcc)
 		goto out;
 	}
 
-	if (!pval.intval) {
-		/*
-		 * To honor main charger upper FCC limit, on CP switcher
-		 * disable, skip fcc slewing as it will cause delay in limiting
-		 * the charge current flowing through main charger.
-		 */
-		if (!chip->cp_disabled) {
-			chip->fcc_stepper_enable = false;
-			pl_dbg(chip, PR_PARALLEL,
-				"Disabling FCC slewing on CP Switcher disable\n");
-		}
-		chip->cp_disabled = true;
-	} else {
-		chip->cp_disabled = false;
-		pl_dbg(chip, PR_PARALLEL,
-			"CP Switcher is enabled, don't limit main fcc\n");
-		return;
-	}
 out:
 	*total_fcc = min(*total_fcc, chip->main_fcc_max);
 }
@@ -2080,9 +2061,7 @@ int qcom_batt_init(struct charger_param *chg_param)
 		pr_err("Couldn't determine initial status rc=%d\n", rc);
 		goto unreg_notifier;
 	}
-	/* Xiaomi change */
-	// chip->pl_disable = true;
-	// chip->cp_disabled = true;
+
 	chip->qcom_batt_class.name = "qcom-battery",
 	chip->qcom_batt_class.owner = THIS_MODULE,
 	chip->qcom_batt_class.class_groups = batt_class_groups;

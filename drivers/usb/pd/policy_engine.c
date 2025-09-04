@@ -4620,7 +4620,6 @@ unsigned int pd_vbus_ctrl;
 module_param(pd_vbus_ctrl, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(pd_vbus_ctrl, "PD VBUS CONTROL");
 
-
 void pd_vbus_reset(struct usbpd *pd)
 {
 	if (!pd)
