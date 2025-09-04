@@ -1402,7 +1402,7 @@ int dsi_display_set_power(struct drm_connector *connector,
 	struct drm_device *dev = NULL;
 	struct drm_notify_data g_notify_data;
 	int rc = 0;
-	int event = 0;
+	int event = power_mode;
 	const char *sde_power_mode_str[] = {
 		[SDE_MODE_DPMS_ON] = "SDE_MODE_DPMS_ON",
 		[SDE_MODE_DPMS_LP1] = "SDE_MODE_DPMS_LP1",

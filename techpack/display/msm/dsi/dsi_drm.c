@@ -464,11 +464,19 @@ static void dsi_bridge_disable(struct drm_bridge *bridge)
 	int private_flags;
 	struct dsi_display *display;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
+	struct drm_notify_data g_notify_data;
+	int power_mode;
 
 	if (!bridge) {
 		DSI_ERR("Invalid params\n");
 		return;
 	}
+
+	power_mode = sde_connector_get_lp(c_bridge->display->drm_conn);
+	g_notify_data.data = &power_mode;
+	g_notify_data.id = MSM_DRM_PRIMARY_DISPLAY;
+	drm_notifier_call_chain(DRM_R_EARLY_EVENT_BLANK, &g_notify_data);
+
 	display = c_bridge->display;
 	private_flags =
 		bridge->encoder->crtc->state->adjusted_mode.private_flags;
