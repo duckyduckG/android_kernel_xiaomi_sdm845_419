@@ -2587,7 +2587,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 {
 	int thermal_icl_ua = 0;
 	int rc;
-
+	// DISABEL THERMALs
 	// DEBUG ONLY!!!!!!!
 	return 0;
 
