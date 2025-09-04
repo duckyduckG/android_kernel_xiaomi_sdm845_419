@@ -771,6 +771,8 @@ static int pd_send_msg(struct usbpd *pd, u8 msg_type, const u32 *data,
 		hdr = PD_MSG_HDR(msg_type, 0, 0, pd->tx_msgid[sop], num_data,
 				pd->spec_rev);
 
+	pd->tx_msgid[sop] = (pd->tx_msgid[sop] + 1) & PD_MAX_MSG_ID;
+	usbpd_info(&pd->dev, "pd->tx_msgid[sop]:%d,hdr:%x\n", pd->tx_msgid[sop], hdr);
 	/* bail out and try again later if a message just arrived */
 	spin_lock_irqsave(&pd->rx_lock, flags);
 	if (!list_empty(&pd->rx_q)) {
@@ -792,7 +794,6 @@ static int pd_send_msg(struct usbpd *pd, u8 msg_type, const u32 *data,
 		return ret;
 	}
 
-	pd->tx_msgid[sop] = (pd->tx_msgid[sop] + 1) & PD_MAX_MSG_ID;
 	return 0;
 }
 
@@ -828,6 +829,7 @@ static int pd_send_ext_msg(struct usbpd *pd, u8 msg_type,
 		hdr = PD_MSG_HDR(msg_type, pd->current_dr, pd->current_pr,
 				pd->tx_msgid[sop], num_objs, pd->spec_rev) |
 			PD_MSG_HDR_EXTENDED;
+		pd->tx_msgid[sop] = (pd->tx_msgid[sop] + 1) & PD_MAX_MSG_ID;
 		ret = pd_phy_write(hdr, chunked_payload,
 				num_objs * sizeof(u32), sop);
 		if (ret) {
@@ -836,8 +838,6 @@ static int pd_send_ext_msg(struct usbpd *pd, u8 msg_type,
 					ret);
 			return ret;
 		}
-
-		pd->tx_msgid[sop] = (pd->tx_msgid[sop] + 1) & PD_MAX_MSG_ID;
 
 		/* Wait for request chunk */
 		if (len_remain &&
@@ -876,8 +876,12 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 			PD_SRC_PDO_FIXED_VOLTAGE(pdo) * 50 * 1000;
 
 		/*if limit_pd_vbus is enabled, pd request uv will less than pd vbus max*/
-		if (pd->limit_pd_vbus && pd->requested_voltage > pd->pd_vbus_max_limit)
+		if (pd->requested_voltage > PD_VBUS_MAX_VOLTAGE_LIMIT)
 			return -ENOTSUPP;
+		// 9V - 2A
+		if (pd->requested_voltage == PD_VBUS_MAX_VOLTAGE_LIMIT
+				&& curr >= 2000)
+			curr = 2000;
 
 		pd->rdo = PD_RDO_FIXED(pdo_pos, 0, mismatch, 1, 1, curr / 10,
 				max_current / 10);
@@ -890,8 +894,6 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 			return -EINVAL;
 		}
 
-		curr = ua / 1000;
-
 		/*if limit_pd_vbus is enabled, pd request uv will less than pd vbus max*/
 		if (pd->limit_pd_vbus && uv > pd->pd_vbus_max_limit)
 			uv = pd->pd_vbus_max_limit;
@@ -902,6 +904,8 @@ static int pd_select_pdo(struct usbpd *pd, int pdo_pos, int uv, int ua)
 		 */
 		if (uv >= MAX_ALLOWED_APDO_UV)
 			uv = MAX_ALLOWED_APDO_UV;
+
+		curr = ua / 1000;
 
 		pd->requested_voltage = uv;
 		pd->rdo = PD_RDO_AUGMENTED(pdo_pos, mismatch, 1, 1,
@@ -4914,9 +4918,6 @@ struct usbpd *usbpd_create(struct device *parent)
 	extcon_set_property_capability(pd->extcon, EXTCON_USB_HOST,
 			EXTCON_PROP_USB_SS);
 
-	if (device_property_read_bool(parent, "qcom,no-usb3-dp-concurrency"))
-		pd->no_usb3dp_concurrency = true;
-
 	ret = of_property_read_u32(parent->of_node, "mi,limit_pd_vbus",
 			&pd->limit_pd_vbus);
 	if (ret) {
@@ -4932,6 +4933,9 @@ struct usbpd *usbpd_create(struct device *parent)
 			pd->pd_vbus_max_limit = PD_VBUS_MAX_VOLTAGE_LIMIT;
 		}
 	}
+
+	if (device_property_read_bool(parent, "qcom,no-usb3-dp-concurrency"))
+		pd->no_usb3dp_concurrency = true;
 
 	pd->num_sink_caps = device_property_read_u32_array(parent,
 			"qcom,default-sink-caps", NULL, 0);

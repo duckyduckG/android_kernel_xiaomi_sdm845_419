@@ -1483,7 +1483,8 @@ static int smblib_dc_icl_vote_callback(struct votable *votable, void *data,
 
 	suspend = (icl_ua <= USBIN_25MA);
 	if (suspend)
-		goto suspend;
+		//goto suspend;
+		return rc;
 
 	rc = smblib_set_charge_param(chg, &chg->param.dc_icl, icl_ua);
 	if (rc < 0) {
@@ -1491,7 +1492,7 @@ static int smblib_dc_icl_vote_callback(struct votable *votable, void *data,
 			rc);
 		return rc;
 	}
-
+/*
 suspend:
 	rc = vote(chg->dc_suspend_votable, USER_VOTER, suspend, 0);
 	if (rc < 0) {
@@ -1499,6 +1500,7 @@ suspend:
 			suspend ? "suspend" : "resume", rc);
 		return rc;
 	}
+*/
 	return rc;
 }
 
@@ -3525,7 +3527,7 @@ int smblib_set_prop_type_recheck(struct smb_charger *chg,
 	if (val->intval == 0) {
 		cancel_delayed_work_sync(&chg->charger_type_recheck);
 		chg->recheck_charger = false;
-		chg->ignore_recheck_flag = false;
+		// chg->ignore_recheck_flag = false;
 	}
 	return 0;
 }
