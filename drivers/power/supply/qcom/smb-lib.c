@@ -999,11 +999,6 @@ int smblib_rerun_apsd_if_required(struct smb_charger *chg)
 	if (!val.intval)
 		return 0;
 
-	// Xiaomi Change
-	/* rc = smblib_request_dpdm(chg, true);
-	if (rc < 0)
-		smblib_err(chg, "Couldn't to enable DPDM rc=%d\n", rc); */
-
 	chg->uusb_apsd_rerun_done = true;
 
 	if (!off_charge_flag) {
@@ -1189,8 +1184,7 @@ int smblib_set_icl_current(struct smb_charger *chg, int icl_ua)
 			smblib_err(chg, "Couldn't get usb present rc = %d\n", rc);
 		else
 			usb_present = val.intval;
-		if (usb_present
-				&& chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
+		if (usb_present && chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
 			set_sdp_current(chg, 500000);
 		else
 			set_sdp_current(chg, 100000);
@@ -2165,7 +2159,7 @@ int smblib_get_prop_batt_status(struct smb_charger *chg,
 			return 0;
 		}
 	}
-/*this is a workaround to support type-c apapter without PD*/
+	/*this is a workaround to support type-c apapter without PD*/
 	if ( chg->typec_en_dis_active && pval.intval != POWER_SUPPLY_HEALTH_OVERHEAT
 					&& pval.intval != POWER_SUPPLY_HEALTH_COLD)
 	{
@@ -2544,8 +2538,7 @@ static void smblib_reg_work(struct work_struct *work)
 							icl_settle, usb_cur_in, usb_vol_in);
 		if (!chg->usb_main_psy) {
 			chg->usb_main_psy = power_supply_get_by_name("main");
-		}
-		else {
+		} else {
 			power_supply_get_property(chg->usb_main_psy,
 							POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
 							&val);
@@ -2555,8 +2548,7 @@ static void smblib_reg_work(struct work_struct *work)
 
 		if (!chg->pl.psy) {
 			chg->pl.psy = power_supply_get_by_name("parallel");
-		}
-		else {
+		} else {
 			power_supply_get_property(chg->pl.psy,
 							POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX,
 							&val);
@@ -2573,8 +2565,7 @@ static void smblib_reg_work(struct work_struct *work)
 
 		schedule_delayed_work(&chg->reg_work,
 			CHARGING_PERIOD_S * HZ);
-	}
-	else
+	} else
 		schedule_delayed_work(&chg->reg_work,
 			NOT_CHARGING_PERIOD_S * HZ);
 }
@@ -2596,6 +2587,9 @@ static int smblib_therm_charging(struct smb_charger *chg)
 {
 	int thermal_icl_ua = 0;
 	int rc;
+
+	// DEBUG ONLY!!!!!!!
+	return 0;
 
 	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
 		return 0;
@@ -4819,6 +4813,10 @@ static void smblib_handle_hvdcp_3p0_auth_done(struct smb_charger *chg,
 
 	smblib_dbg(chg, PR_OEM, "IRQ: hvdcp-3p0-auth-done rising; %s detected was %d\n",
 		   apsd_result->name, current_ua);
+	smblib_dbg(chg, PR_OEM, "SMBDBG APSD Result bits: 0x%x (QC2: %d, QC3: %d)\n",
+			apsd_result->bit,
+			apsd_result->bit & QC_2P0_BIT ? 1 : 0,
+			apsd_result->bit & QC_3P0_BIT ? 1 : 0);
 }
 
 static void smblib_handle_hvdcp_check_timeout(struct smb_charger *chg,
@@ -5320,8 +5318,6 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->pl_enable_work);
 	cancel_delayed_work_sync(&chg->hvdcp_detect_work);
 	cancel_delayed_work_sync(&chg->check_vbus_work);
-	// Xiaomi change
-	// cancel_delayed_work_sync(&chg->monitor_low_temp_work);
 
 	/* reset input current limit voters */
 	vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 0);
@@ -5635,7 +5631,7 @@ static void smblib_dc_input_current_work(struct work_struct *work)
 
 	rc = smblib_get_prop_dc_present(chg, &dc_present);
 	if (rc < 0 || !dc_present.intval)
-		return ;
+		return;
 
 	if (!chg->iio.dcin_i_chan ||
 		PTR_ERR(chg->iio.dcin_i_chan) == -EPROBE_DEFER)
@@ -5644,12 +5640,11 @@ static void smblib_dc_input_current_work(struct work_struct *work)
 	if (IS_ERR(chg->iio.dcin_i_chan))
 		return;
 
-	while(retry)
-	{
+	while (retry) {
 		rc = iio_read_channel_processed(chg->iio.dcin_i_chan, &ret);
 		if (rc > 0)
 			break;
-		else{
+		else {
 			retry--;
 			mdelay(100);
 		}
@@ -5748,8 +5743,7 @@ irqreturn_t smblib_handle_dc_plugin(int irq, void *data)
 #endif
 	schedule_delayed_work(&chg->dc_input_current_work,
 			msecs_to_jiffies(2000));
-	}
-	else if (chg->idtp_psy) {
+	} else if (chg->idtp_psy) {
 		cancel_delayed_work_sync(&chg->dc_input_current_work);
 		val.intval = false;
 		power_supply_set_property(chg->idtp_psy,
@@ -6306,10 +6300,10 @@ unlock:
 	smblib_usb_typec_change(chg);
 	mutex_unlock(&chg->lock);
 }
+
 #define CONNECTOR_HEALTH_TIME_20S	20000
 #define CONNECTOR_HEALTH_TIME_5S	5000
 #define CONNECTOR_HEALTH_COUNT		6
-
 static void smblib_connector_health_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,
@@ -6470,7 +6464,6 @@ unlock:
 					msecs_to_jiffies(200));
 
 }
-
 
 static int smblib_create_votables(struct smb_charger *chg)
 {

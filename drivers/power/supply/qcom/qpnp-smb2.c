@@ -527,7 +527,6 @@ static int smb2_parse_dt(struct smb2 *chip)
 		chip->dt.jeita_cool_cc_delta = JEITA_SOFT_COOL_CC_COMP;
 	chg->jeita_ccomp_cool_delta = chip->dt.jeita_cool_cc_delta;
 
-
 	chg->disable_stat_sw_override = of_property_read_bool(node,
 					"qcom,disable-stat-sw-override");
 
@@ -1134,7 +1133,6 @@ static int smb2_dc_get_prop(struct power_supply *psy,
 		rc = smblib_get_prop_dc_online(chg, val);
 		break;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_NOW:
-		//rc = smblib_get_prop_dc_current_now(chg, val);
 		val->intval = chg->dc_input_current_now;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
