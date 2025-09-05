@@ -240,15 +240,22 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	if (c_bridge->display->is_prim_display && atomic_read(&prim_panel_is_on)) {
 		cancel_delayed_work_sync(&prim_panel_work);
 		__pm_relax(prim_panel_wakelock);
-		if (dev->fp_quickon &&
-			(dev->doze_state == DRM_BLANK_LP1 || dev->doze_state == DRM_BLANK_LP2)) {
+		//if (dev->fp_quickon &&
+		  if (dev->doze_state == DRM_BLANK_LP1 || dev->doze_state == DRM_BLANK_LP2) {
 			event = DRM_BLANK_POWERDOWN;
 			drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
 			drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
-			dev->fp_quickon = false;
-		}
+			//dev->fp_quickon = false;
+		} else if (c_bridge->display->panel->panel_mode == DSI_OP_VIDEO_MODE) {
+			DSI_INFO("skip set display config for video panel in fpc\n");
+			return;
+		} else if (c_bridge->display->panel->panel_mode == DSI_OP_CMD_MODE &&
+		    c_bridge->dsi_mode.dsi_mode_flags != DSI_MODE_FLAG_DMS) {
+			DSI_INFO("skip set display config because timming not switch for command panel\n");
+
 		pr_debug("%s panel already on\n", __func__);
 		return;
+		}
 	}
 
 	drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
@@ -343,9 +350,10 @@ int dsi_bridge_interface_enable(int timeout)
 		return 0;
 	}
 
-	gbridge->base.dev->fp_quickon = true;
+	//gbridge->base.dev->fp_quickon = true;
 
 	__pm_stay_awake(prim_panel_wakelock);
+	gbridge->dsi_mode.dsi_mode_flags = 0;
 	dsi_bridge_pre_enable(&gbridge->base);
 
 	if (timeout > 0)
@@ -555,8 +563,8 @@ static void dsi_bridge_post_disable(struct drm_bridge *bridge)
 
 	drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
 
-	if (gbridge)
-		gbridge->base.dev->fp_quickon = false;
+	//if (gbridge)
+		//gbridge->base.dev->fp_quickon = false;
 
 	if (c_bridge->display->is_prim_display)
 		atomic_set(&prim_panel_is_on, false);
@@ -568,7 +576,7 @@ static void prim_panel_off_delayed_work(struct work_struct *work)
 	if (atomic_read(&prim_panel_is_on)) {
 		dsi_bridge_post_disable(&gbridge->base);
 		__pm_relax(prim_panel_wakelock);
-		gbridge->base.dev->fp_quickon = false;
+		//gbridge->base.dev->fp_quickon = false;
 		mutex_unlock(&gbridge->base.lock);
 		return;
 	}
