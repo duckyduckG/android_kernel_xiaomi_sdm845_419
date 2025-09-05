@@ -8,6 +8,9 @@
 #include <cam_mem_mgr.h>
 #include "cam_res_mgr_api.h"
 
+#undef CAM_DBG
+#define CAM_DBG CAM_INFO
+
 #define CAM_SENSOR_PINCTRL_STATE_SLEEP "cam_suspend"
 #define CAM_SENSOR_PINCTRL_STATE_DEFAULT "cam_default"
 

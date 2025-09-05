@@ -22,6 +22,9 @@
 #include "cam_smmu_api.h"
 #include "cam_debug_util.h"
 
+#undef CAM_DBG
+#define CAM_DBG CAM_INFO
+
 #define SHARED_MEM_POOL_GRANULARITY 12
 
 #define IOMMU_INVALID_DIR -1

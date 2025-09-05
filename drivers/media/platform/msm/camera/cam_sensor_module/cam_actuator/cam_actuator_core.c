@@ -12,6 +12,9 @@
 #include "cam_trace.h"
 #include "cam_res_mgr_api.h"
 
+#undef CAM_DBG
+#define CAM_DBG CAM_INFO
+
 #define FIRMWARE_NAME "bu64748gwz.prog"
 #define ACTUATOR_TRANS_SIZE 32
 

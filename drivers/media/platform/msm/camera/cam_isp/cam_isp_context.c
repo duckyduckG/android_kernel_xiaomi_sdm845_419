@@ -17,6 +17,9 @@
 #include "cam_trace.h"
 #include "cam_debug_util.h"
 
+#undef CAM_DBG
+#define CAM_DBG CAM_INFO
+
 static const char isp_dev_name[] = "isp";
 
 static int __cam_isp_ctx_enqueue_request_in_order(
