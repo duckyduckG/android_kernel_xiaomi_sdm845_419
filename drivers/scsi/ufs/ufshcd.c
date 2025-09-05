@@ -44,6 +44,7 @@
 #include <linux/bitfield.h>
 #include <linux/blkdev.h>
 #include <linux/suspend.h>
+#include <linux/hwinfo.h>
 #include "ufshcd.h"
 #include "ufs_quirks.h"
 #include "unipro.h"
@@ -8949,6 +8950,10 @@ static int ufs_read_device_desc_data(struct ufs_hba *hba)
 	hba->dev_info.w_spec_version =
 		desc_buf[DEVICE_DESC_PARAM_SPEC_VER] << 8 |
 		desc_buf[DEVICE_DESC_PARAM_SPEC_VER + 1];
+
+	update_hardware_info(TYPE_EMMC, hba->dev_info.w_manufacturer_id);
+	dev_info(hba->dev, "UFS manufacturer id: 0x%04X\n",
+						hba->dev_info.w_manufacturer_id);
 out:
 	kfree(desc_buf);
 	return err;
