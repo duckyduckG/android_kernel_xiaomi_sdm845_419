@@ -643,7 +643,7 @@ int32_t cam_sensor_update_power_settings(void *cmd_buf,
 	struct cam_cmd_power *pwr_cmd = (struct cam_cmd_power *)cmd_buf;
 	struct common_header *cmm_hdr = (struct common_header *)cmd_buf;
 
-	if (!pwr_cmd || !cmd_length) {
+	if (!cmd_buf || cmd_length < sizeof(struct cam_cmd_power)) {
 		CAM_ERR(CAM_SENSOR, "Invalid Args: pwr_cmd %pK, cmd_length: %d",
 			pwr_cmd, cmd_length);
 		return -EINVAL;

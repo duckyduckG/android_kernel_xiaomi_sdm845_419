@@ -10,8 +10,8 @@
 #include "cam_soc_util.h"
 #include "cam_trace.h"
 
-//#undef CAM_DBG
-//#define CAM_DBG CAM_INFO
+#undef CAM_DBG
+#define CAM_DBG CAM_INFO
 
 #if MV_TEMP_SET
 #define IR_CAMERA_ID	3
@@ -619,8 +619,8 @@ int cam_sensor_match_id(struct cam_sensor_ctrl_t *s_ctrl)
 	rc = camera_io_dev_read(
 		&(s_ctrl->io_master_info),
 		slave_info->sensor_id_reg_addr,
-		&chipid, CAMERA_SENSOR_I2C_TYPE_WORD,
-		CAMERA_SENSOR_I2C_TYPE_WORD);
+		&chipid, s_ctrl->sensor_probe_addr_type,
+		s_ctrl->sensor_probe_data_type);
 
 	CAM_INFO(CAM_SENSOR, "read id: 0x%x expected id 0x%x:",
 			 chipid, slave_info->sensor_id);
@@ -779,7 +779,7 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto release_mutex;
 		}
 
-		CAM_DBG(CAM_SENSOR, "[xdgu] operation mode :%d", sensor_acq_dev.operation_mode);
+		CAM_INFO(CAM_SENSOR, "[xdgu] operation mode :%d", sensor_acq_dev.operation_mode);
 		g_operation_mode = sensor_acq_dev.operation_mode;
 
 		bridge_params.session_hdl = sensor_acq_dev.session_handle;
