@@ -212,6 +212,7 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 	int rc = 0;
 	struct dsi_bridge *c_bridge = to_dsi_bridge(bridge);
 	struct drm_device *dev = bridge->dev;
+	struct sde_connector *c_conn = to_sde_connector(c_bridge->display->drm_conn);
 	int event = 0;
 
 	if (dev->doze_state == DRM_BLANK_POWERDOWN) {
@@ -234,23 +235,35 @@ static void dsi_bridge_pre_enable(struct drm_bridge *bridge)
 
 	if (bridge->encoder->crtc->state->active_changed)
 		atomic_set(&c_bridge->display->panel->esd_recovery_pending, 0);
+	c_conn->panel_dead = false;
 
 	if (c_bridge->display->is_prim_display && atomic_read(&prim_panel_is_on)) {
+		DSI_DEBUG("Primary display is on, handling pre-enable!!!!!\n");
 		cancel_delayed_work_sync(&prim_panel_work);
 		__pm_relax(prim_panel_wakelock);
 		if (dev->fp_quickon &&
 			(dev->doze_state == DRM_BLANK_LP1 || dev->doze_state == DRM_BLANK_LP2)) {
+			DSI_DEBUG("Fingerprint quickon detected with doze_state=%d\n", dev->doze_state);
+			DSI_DEBUG("Sending DRM_BLANK_POWERDOWN event before returning\n");
 			event = DRM_BLANK_POWERDOWN;
 			drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
 			drm_notifier_call_chain(DRM_EVENT_BLANK, &g_notify_data);
 			dev->fp_quickon = false;
-		}
-		pr_debug("%s panel already on\n", __func__);
+			DSI_DEBUG("fp_quickon reset to false, returning early from %s\n", __func__);
+			return;
+		} else if (c_bridge->display->panel->panel_mode == DSI_OP_VIDEO_MODE) {
+			DSI_INFO("skip set display config for video panel in fpc\n");
+			return;
+		} else if (c_bridge->display->panel->panel_mode == DSI_OP_CMD_MODE &&
+		    c_bridge->dsi_mode.dsi_mode_flags != DSI_MODE_FLAG_DMS) {
+			DSI_INFO("skip set display config because timming not switch for command panel\n");
+
+		DSI_DEBUG("%s panel already on\n", __func__);
 		return;
+		}
 	}
 
 	drm_notifier_call_chain(DRM_EARLY_EVENT_BLANK, &g_notify_data);
-
 	/* By this point mode should have been validated through mode_fixup */
 	rc = dsi_display_set_mode(c_bridge->display,
 			&(c_bridge->dsi_mode), 0x0);
@@ -345,6 +358,7 @@ int dsi_bridge_interface_enable(int timeout)
 	gbridge->base.dev->fp_quickon = true;
 
 	__pm_stay_awake(prim_panel_wakelock);
+	gbridge->dsi_mode.dsi_mode_flags = 0;
 	dsi_bridge_pre_enable(&gbridge->base);
 
 	if (timeout > 0)
