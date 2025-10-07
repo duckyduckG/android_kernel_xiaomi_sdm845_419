@@ -488,13 +488,13 @@ static int bcl_set_soc(void *data, int low, int high)
 	struct bcl_peripheral_data *bat_data =
 		(struct bcl_peripheral_data *)data;
 
-	if (low == bat_data->trip_temp)
+	if (high == bat_data->trip_temp)
 		return 0;
 
 	mutex_lock(&bat_data->state_trans_lock);
-	pr_debug("low soc threshold:%d\n", low);
-	bat_data->trip_temp = low;
-	if (low == INT_MIN) {
+	pr_debug("socd threshold:%d\n", high);
+	bat_data->trip_temp = high;
+	if (high == INT_MAX) {
 		bat_data->irq_enabled = false;
 		goto unlock_and_exit;
 	}
@@ -512,7 +512,7 @@ static int bcl_read_soc(void *data, int *val)
 	union power_supply_propval ret = {0,};
 	int err = 0;
 
-	*val = 100;
+	*val = 0;
 	if (!batt_psy)
 		batt_psy = power_supply_get_by_name("battery");
 	if (batt_psy) {
@@ -523,7 +523,7 @@ static int bcl_read_soc(void *data, int *val)
 				err);
 			return err;
 		}
-		*val = ret.intval;
+		*val = 100 - ret.intval;
 	}
 	pr_debug("soc:%d\n", *val);
 
@@ -532,20 +532,20 @@ static int bcl_read_soc(void *data, int *val)
 
 static void bcl_evaluate_soc(struct work_struct *work)
 {
-	int battery_percentage;
+	int battery_depletion;
 	struct bcl_peripheral_data *perph_data =
 		&bcl_perph->param[BCL_SOC_MONITOR];
 
-	if (bcl_read_soc((void *)perph_data, &battery_percentage))
+	if (bcl_read_soc((void *)perph_data, &battery_depletion))
 		return;
 
 	mutex_lock(&perph_data->state_trans_lock);
 	if (!perph_data->irq_enabled)
 		goto eval_exit;
-	if (battery_percentage > perph_data->trip_temp)
+	if (battery_depletion < perph_data->trip_temp)
 		goto eval_exit;
 
-	perph_data->trip_val = battery_percentage;
+	perph_data->trip_val = battery_depletion;
 	mutex_unlock(&perph_data->state_trans_lock);
 	of_thermal_handle_trip(perph_data->tz_dev);
 
