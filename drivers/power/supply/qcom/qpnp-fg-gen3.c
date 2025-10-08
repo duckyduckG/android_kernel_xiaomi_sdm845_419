@@ -6112,6 +6112,11 @@ static int fg_gen3_resume(struct device *dev)
 {
 	struct fg_gen3_chip *chip = dev_get_drvdata(dev);
 	struct fg_dev *fg = &chip->fg;
+	int rc;
+
+	rc = fg_esr_timer_config(fg, false);
+	if (rc < 0)
+		pr_err("Error in configuring ESR timer, rc=%d\n", rc);
 
 	schedule_delayed_work(&fg->esr_timer_config_work, 0);
 	schedule_delayed_work(&chip->ttf_work, 0);

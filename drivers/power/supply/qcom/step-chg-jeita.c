@@ -892,7 +892,7 @@ static void status_change_work(struct work_struct *work)
 	if (rc > 0)
 		reschedule_dynamic_fv_work_us = rc;
 	else if (rc < 0)
-		pr_err("Couldn't handle sw  rc = %d\n", rc);
+		pr_err("Couldn't handle sw rc = %d\n", rc);
 
 	rc = handle_step_chg_config(chip);
 	if (rc < 0)
