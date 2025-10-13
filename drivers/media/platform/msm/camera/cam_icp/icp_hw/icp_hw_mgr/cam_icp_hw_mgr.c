@@ -461,12 +461,13 @@ static int32_t cam_icp_ctx_timer(void *priv, void *data)
 	return 0;
 }
 
-static void cam_icp_ctx_timer_cb(unsigned long data)
+static void cam_icp_ctx_timer_cb(struct timer_list *timer_data)
 {
 	unsigned long flags;
 	struct crm_workq_task *task;
 	struct clk_work_data *task_data;
-	struct cam_req_mgr_timer *timer = (struct cam_req_mgr_timer *)data;
+	struct cam_req_mgr_timer *timer =
+		container_of(timer_data, struct cam_req_mgr_timer, sys_timer);
 
 	spin_lock_irqsave(&icp_hw_mgr.hw_mgr_lock, flags);
 	task = cam_req_mgr_workq_get_task(icp_hw_mgr.timer_work);
@@ -485,12 +486,13 @@ static void cam_icp_ctx_timer_cb(unsigned long data)
 	spin_unlock_irqrestore(&icp_hw_mgr.hw_mgr_lock, flags);
 }
 
-static void cam_icp_device_timer_cb(unsigned long data)
+static void cam_icp_device_timer_cb(struct timer_list *timer_data)
 {
 	unsigned long flags;
 	struct crm_workq_task *task;
 	struct clk_work_data *task_data;
-	struct cam_req_mgr_timer *timer = (struct cam_req_mgr_timer *)data;
+	struct cam_req_mgr_timer *timer =
+		container_of(timer_data, struct cam_req_mgr_timer, sys_timer);
 
 	spin_lock_irqsave(&icp_hw_mgr.hw_mgr_lock, flags);
 	task = cam_req_mgr_workq_get_task(icp_hw_mgr.timer_work);
@@ -4750,12 +4752,6 @@ int cam_icp_hw_mgr_init(struct device_node *of_node, uint64_t *hw_mgr_hdl,
 		goto icp_get_hdl_failed;
 	}
 
-	rc = cam_smmu_ops(icp_hw_mgr.iommu_hdl, CAM_SMMU_ATTACH);
-	if (rc) {
-		CAM_ERR(CAM_ICP, "icp attach failed: %d", rc);
-		goto icp_attach_failed;
-	}
-
 	rc = cam_smmu_get_handle("cam-secure", &icp_hw_mgr.iommu_sec_hdl);
 	if (rc) {
 		CAM_ERR(CAM_ICP, "get secure mmu handle failed: %d", rc);
@@ -4776,8 +4772,6 @@ icp_wq_create_failed:
 	cam_smmu_destroy_handle(icp_hw_mgr.iommu_sec_hdl);
 	icp_hw_mgr.iommu_sec_hdl = -1;
 secure_hdl_failed:
-	cam_smmu_ops(icp_hw_mgr.iommu_hdl, CAM_SMMU_DETACH);
-icp_attach_failed:
 	cam_smmu_destroy_handle(icp_hw_mgr.iommu_hdl);
 	icp_hw_mgr.iommu_hdl = -1;
 icp_get_hdl_failed:
