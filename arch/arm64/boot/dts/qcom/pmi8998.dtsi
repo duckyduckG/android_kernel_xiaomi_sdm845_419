@@ -677,6 +677,7 @@
 			qcom,lra-auto-resonance-mode = "qwd";
 			qcom,lra-allow-variable-play-rate;
 			qcom,pmic-revid = <&pmi8998_revid>;
+			status = "disabled";
 
 			wf_0 {
 				/* CLICK */
