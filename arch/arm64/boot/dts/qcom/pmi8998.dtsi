@@ -676,6 +676,7 @@
 			qcom,lra-resonance-sig-shape = "sine";
 			qcom,lra-auto-resonance-mode = "qwd";
 			qcom,lra-allow-variable-play-rate;
+			qcom,pmic-revid = <&pmi8998_revid>;
 
 			wf_0 {
 				/* CLICK */
