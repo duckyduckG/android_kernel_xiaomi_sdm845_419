@@ -617,31 +617,6 @@
 	};
 };
 
-&gmu {
-	qcom,gmu-pwrlevels {
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		compatible = "qcom,gmu-pwrlevels";
-
-		/* GMU power levels must go from lowest to highest */
-		qcom,gmu-pwrlevel@0 {
-			reg = <0>;
-			qcom,gmu-freq = <0>;
-		};
-
-		qcom,gmu-pwrlevel@1 {
-			reg = <1>;
-			qcom,gmu-freq = <200000000>;
-		};
-
-		qcom,gmu-pwrlevel@2 {
-			reg = <2>;
-			qcom,gmu-freq = <500000000>;
-		};
-	};
-};
-
 &qusb_phy0 {
 		qcom,qusb-phy-init-seq =
 			/* <value reg_offset> */
