@@ -56,7 +56,7 @@
 		<0x17d43000 0x1000>;
 		qcom,affinity = <0>;
 		#thermal-sensor-cells = <0>;
-		qcom,plat-mitigation-disable;
+		qcom,no-cooling-device-register;
 		qcom,legacy-lmh-enable;
 	};
 
@@ -69,7 +69,7 @@
 		#thermal-sensor-cells = <0>;
 		isens_vref_0p8-supply = <&pm8998_l1_ao>;
 		isens-vref-0p8-settings = <880000 880000 20000>;
-		qcom,plat-mitigation-disable;
+		qcom,no-cooling-device-register;
 		qcom,legacy-lmh-enable;
 	};
 };
