@@ -99,8 +99,22 @@ int cam_vfe_put_evt_payload(void             *core_info,
 	}
 
 	spin_lock_irqsave(&vfe_core_info->spin_lock, flags);
+	if (!list_empty(&(*evt_payload)->list)) {
+		CAM_DBG(CAM_ISP,
+			"Double list add detected, bug in driver!!! payload=%p prev=%p next=%p free_list=%p",
+			*evt_payload,
+			(*evt_payload)->list.prev,
+			(*evt_payload)->list.next,
+			&vfe_core_info->free_payload_list);
+		//dump_stack();
+		/* unlink double list before re-adding to avoid bug-on */
+		list_del_init(&(*evt_payload)->list);
+	}
 	(*evt_payload)->error_type = 0;
+	CAM_DBG(CAM_ISP, "Adding evt_payload=%p to free_payload_list=%p",
+		*evt_payload, &vfe_core_info->free_payload_list);
 	list_add_tail(&(*evt_payload)->list, &vfe_core_info->free_payload_list);
+	CAM_DBG(CAM_ISP, "Added evt_payload=%p successfully", *evt_payload);
 	*evt_payload = NULL;
 	spin_unlock_irqrestore(&vfe_core_info->spin_lock, flags);
 
