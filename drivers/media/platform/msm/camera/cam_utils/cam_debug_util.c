@@ -98,6 +98,11 @@ const char *cam_get_module_name(unsigned int module_id)
 	case CAM_REQ:
 		name = "CAM-REQ";
 		break;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	case CAM_SL_EEPROM:
+		name = "CAM-SL-EEPROM";
+		break;
+#endif
 	default:
 		name = "CAM";
 		break;

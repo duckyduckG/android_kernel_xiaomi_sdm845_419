@@ -900,6 +900,16 @@ static int __cam_req_mgr_process_req(struct cam_req_mgr_core_link *link,
 		goto error;
 	}
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (link->sync_link && link->sync_link->sync_link == link) {
+		if (link->sync_link->sync_trigger_frame_id == 0 && link->sync_trigger_frame_id > 1) {
+			rc = 0;
+			CAM_DBG(CAM_CRM, "Waiting another sensor");
+			goto error;
+		}
+	}
+#endif
+
 	if ((trigger != CAM_TRIGGER_POINT_SOF) &&
 		(trigger != CAM_TRIGGER_POINT_EOF))
 		goto error;
@@ -1911,6 +1921,9 @@ static int cam_req_mgr_process_trigger(void *priv, void *data)
 		__cam_req_mgr_check_next_req_slot(in_q);
 		__cam_req_mgr_inc_idx(&in_q->rd_idx, 1, in_q->num_slots);
 	}
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	link->sync_trigger_frame_id = trigger_data->frame_id;
+#endif
 	rc = __cam_req_mgr_process_req(link, trigger_data->trigger);
 	mutex_unlock(&link->req.lock);
 
@@ -2705,12 +2718,18 @@ int cam_req_mgr_sync_config(
 	link1->frame_skip_flag = false;
 	link1->sync_link_sof_skip = false;
 	link1->sync_link = link2;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	link1->sync_trigger_frame_id = 0;
+#endif
 
 	link2->sof_counter = -1;
 	link2->sync_self_ref = -1;
 	link2->frame_skip_flag = false;
 	link2->sync_link_sof_skip = false;
 	link2->sync_link = link1;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	link2->sync_trigger_frame_id = 0;
+#endif
 
 	cam_session->sync_mode = sync_info->sync_mode;
 	CAM_DBG(CAM_REQ,
@@ -2821,7 +2840,11 @@ int cam_req_mgr_link_control(struct cam_req_mgr_link_control *control)
 		link = (struct cam_req_mgr_core_link *)
 			cam_get_device_priv(control->link_hdls[i]);
 		if (!link) {
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+			CAM_ERR_RATE_LIMIT(CAM_CRM, "Link(%d) is NULL on session 0x%x",
+#else
 			CAM_ERR(CAM_CRM, "Link(%d) is NULL on session 0x%x",
+#endif
 				i, control->session_hdl);
 			rc = -EINVAL;
 			break;

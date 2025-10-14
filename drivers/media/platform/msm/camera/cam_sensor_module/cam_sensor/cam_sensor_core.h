@@ -15,6 +15,10 @@
 
 #include "cam_sensor_dev.h"
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define MV_TEMP_SET 1
+#endif
+
 /**
  * @s_ctrl: Sensor ctrl structure
  *

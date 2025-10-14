@@ -78,6 +78,15 @@ int32_t camera_io_init(struct camera_io_master *io_master_info);
  */
 int32_t camera_io_release(struct camera_io_master *io_master_info);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+/**
+ * @io_master_info: I2C/SPI master information
+ *
+ * This API return whether to wait normal write
+ */
+bool camera_io_wait_normal_write(void);
+#endif
+
 /**
  * @io_master_info: I2C/SPI master information
  * @write_setting: write settings information
