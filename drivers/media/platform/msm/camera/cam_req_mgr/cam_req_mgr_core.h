@@ -335,6 +335,9 @@ struct cam_req_mgr_core_link {
 	int64_t                              sync_self_ref;
 	bool                                 frame_skip_flag;
 	bool                                 sync_link_sof_skip;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int64_t                              sync_trigger_frame_id;
+#endif
 	int32_t                              open_req_cnt;
 	uint32_t                             last_flush_id;
 	atomic_t                             is_used;
