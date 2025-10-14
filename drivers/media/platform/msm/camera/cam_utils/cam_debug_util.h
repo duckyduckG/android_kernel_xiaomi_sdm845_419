@@ -47,6 +47,11 @@
 /* CAM_PERF: Used for performance (clock, BW etc) logs */
 #define CAM_PERF       (1 << 25)
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+/* CAM_SL_EEPROM: Used for SL EEPROM logs */
+#define CAM_SL_EEPROM  (1 << 26)
+#endif
+
 #define STR_BUFFER_MAX_LENGTH  1024
 
 /*
