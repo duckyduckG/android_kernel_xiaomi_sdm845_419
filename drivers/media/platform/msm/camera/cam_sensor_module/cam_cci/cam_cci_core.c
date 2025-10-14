@@ -468,9 +468,11 @@ static int32_t cam_cci_calc_cmd_len(struct cci_device *cci_dev,
 		len = data_len + addr_len;
 		pack_max_len = size < (cci_dev->payload_size-len) ?
 			size : (cci_dev->payload_size-len);
+
 		for (i = 0; i < pack_max_len;) {
 			if (cmd->delay || ((cmd - i2c_cmd) >= (cmd_size - 1)))
 				break;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 			if (cmd->reg_addr + 1 ==
 				(cmd+1)->reg_addr) {
 				len += data_len;
@@ -479,7 +481,9 @@ static int32_t cam_cci_calc_cmd_len(struct cci_device *cci_dev,
 					break;
 				}
 				(*pack)++;
-			} else {
+			}
+#endif
+			else {
 				break;
 			}
 			i += data_len;
@@ -1518,14 +1522,22 @@ static int32_t cam_cci_i2c_set_sync_prms(struct v4l2_subdev *sd,
 	return rc;
 }
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static int32_t cam_cci_release(struct v4l2_subdev *sd, struct cam_cci_ctrl *c_ctrl)
+#else
 static int32_t cam_cci_release(struct v4l2_subdev *sd)
+#endif
 {
 	uint8_t rc = 0;
 	struct cci_device *cci_dev;
 
 	cci_dev = v4l2_get_subdevdata(sd);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	rc = cam_cci_soc_release(cci_dev, c_ctrl);
+#else
 	rc = cam_cci_soc_release(cci_dev);
+#endif
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "Failed in releasing the cci: %d", rc);
 		return rc;
@@ -1541,7 +1553,9 @@ static int32_t cam_cci_write(struct v4l2_subdev *sd,
 	struct cci_device *cci_dev;
 	enum cci_i2c_master_t master;
 	struct cam_cci_master_info *cci_master_info;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	uint32_t i;
+#endif
 
 	cci_dev = v4l2_get_subdevdata(sd);
 	if (!cci_dev || !c_ctrl) {
@@ -1575,6 +1589,7 @@ static int32_t cam_cci_write(struct v4l2_subdev *sd,
 	case MSM_CCI_I2C_WRITE:
 	case MSM_CCI_I2C_WRITE_SEQ:
 	case MSM_CCI_I2C_WRITE_BURST:
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 		for (i = 0; i < NUM_QUEUES; i++) {
 			if (mutex_trylock(&cci_master_info->mutex_q[i])) {
 				rc = cam_cci_i2c_write(sd, c_ctrl, i,
@@ -1583,6 +1598,7 @@ static int32_t cam_cci_write(struct v4l2_subdev *sd,
 				return rc;
 			}
 		}
+#endif
 		mutex_lock(&cci_master_info->mutex_q[PRIORITY_QUEUE]);
 		rc = cam_cci_i2c_write(sd, c_ctrl,
 			PRIORITY_QUEUE, MSM_SYNC_DISABLE);
@@ -1622,7 +1638,11 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 		break;
 	case MSM_CCI_RELEASE:
 		mutex_lock(&cci_dev->init_mutex);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		rc = cam_cci_release(sd, cci_ctrl);
+#else
 		rc = cam_cci_release(sd);
+#endif
 		mutex_unlock(&cci_dev->init_mutex);
 		break;
 	case MSM_CCI_I2C_READ:

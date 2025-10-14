@@ -1864,7 +1864,11 @@ int cam_fd_hw_mgr_init(struct device_node *of_node,
 		g_fd_hw_mgr.cdm_iommu.secure);
 
 	/* Init hw mgr contexts and add to free list */
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	for (i = 0; i < CAM_FD_CTX_MAX; i++) {
+#else
 	for (i = 0; i < CAM_CTX_MAX; i++) {
+#endif
 		hw_mgr_ctx = &g_fd_hw_mgr.ctx_pool[i];
 
 		memset(hw_mgr_ctx, 0x0, sizeof(*hw_mgr_ctx));
