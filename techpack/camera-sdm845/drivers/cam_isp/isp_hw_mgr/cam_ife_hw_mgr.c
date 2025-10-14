@@ -4385,7 +4385,9 @@ int cam_ife_mgr_do_tasklet(void *handler_priv, void *evt_payload_priv)
 		evt_payload_priv);
 
 put_payload:
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	cam_vfe_put_evt_payload(evt_payload->core_info, &evt_payload);
+#endif
 	return IRQ_HANDLED;
 }
 

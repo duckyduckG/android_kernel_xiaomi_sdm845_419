@@ -46,7 +46,11 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define CCI_TIMEOUT msecs_to_jiffies(800)
+#else
 #define CCI_TIMEOUT msecs_to_jiffies(1500)
+#endif
 
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
@@ -207,6 +211,9 @@ struct cci_device {
 	struct cam_hw_soc_info soc_info;
 	uint32_t hw_version;
 	uint8_t ref_count;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	uint8_t ref_count_cci[MASTER_MAX];
+#endif
 	enum cam_cci_state_t cci_state;
 	struct cam_cci_i2c_queue_info
 		cci_i2c_queue_info[NUM_MASTERS][NUM_QUEUES];

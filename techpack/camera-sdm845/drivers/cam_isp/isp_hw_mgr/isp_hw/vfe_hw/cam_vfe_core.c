@@ -76,6 +76,10 @@ int cam_vfe_put_evt_payload(void             *core_info,
 {
 	struct cam_vfe_hw_core_info        *vfe_core_info = core_info;
 	unsigned long                       flags;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	uint32_t  *ife_irq_regs = NULL;
+	uint32_t   status_reg0, status_reg1;
+#endif
 
 	if (!core_info) {
 		CAM_ERR(CAM_ISP, "Invalid param core_info NULL");
@@ -85,6 +89,18 @@ int cam_vfe_put_evt_payload(void             *core_info,
 		CAM_ERR(CAM_ISP, "No payload to put");
 		return -EINVAL;
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	ife_irq_regs = (*evt_payload)->irq_reg_val;
+	status_reg0 = ife_irq_regs[CAM_IFE_IRQ_CAMIF_REG_STATUS0];
+	status_reg1 = ife_irq_regs[CAM_IFE_IRQ_CAMIF_REG_STATUS1];
+
+	if (status_reg0 || status_reg1) {
+		CAM_DBG(CAM_ISP, "status0 0x%x status1 0x%x",
+			status_reg0, status_reg1);
+		return 0;
+	}
+#endif
 
 	spin_lock_irqsave(&vfe_core_info->spin_lock, flags);
 	(*evt_payload)->error_type = 0;

@@ -26,7 +26,11 @@
 #define MAX_REGULATOR 5
 #define MAX_POWER_CONFIG 12
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define MAX_PER_FRAME_ARRAY 33
+#else
 #define MAX_PER_FRAME_ARRAY 32
+#endif
 #define BATCH_SIZE_MAX      16
 
 #define CAM_SENSOR_NAME    "cam-sensor"
@@ -35,6 +39,9 @@
 #define CAM_FLASH_NAME     "cam-flash"
 #define CAM_EEPROM_NAME    "cam-eeprom"
 #define CAM_OIS_NAME       "cam-ois"
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define CAM_SL_EEPROM_NAME "cam-sl-eeprom"
+#endif
 
 #define MAX_SYSTEM_PIPELINE_DELAY 2
 

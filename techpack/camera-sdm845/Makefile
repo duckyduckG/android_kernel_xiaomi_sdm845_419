@@ -10,6 +10,27 @@ LINUXINCLUDE    += \
 		-include $(srctree)/techpack/camera-sdm845/config/sdm845cameraconf.h
 endif
 
+ifeq ($(CONFIG_MACH_XIAOMI_E10), y)
+include $(srctree)/techpack/camera-sdm845/config/beryllium.conf
+
+LINUXINCLUDE    += \
+		-include $(srctree)/techpack/camera-sdm845/config/beryllium.h
+endif
+
+ifeq ($(CONFIG_MACH_XIAOMI_E1N), y)
+include $(srctree)/techpack/camera-sdm845/config/dipper.conf
+
+LINUXINCLUDE    += \
+		-include $(srctree)/techpack/camera-sdm845/config/dipper.h
+endif
+
+ifeq ($(CONFIG_MACH_XIAOMI_E5), y)
+include $(srctree)/techpack/camera-sdm845/config/dipper.conf
+
+LINUXINCLUDE    += \
+		-include $(srctree)/techpack/camera-sdm845/config/dipper.h
+endif
+
 ifdef CONFIG_SPECTRA_CAMERA_SDM845
 # Use USERINCLUDE when you must reference the UAPI directories only.
 USERINCLUDE     += \

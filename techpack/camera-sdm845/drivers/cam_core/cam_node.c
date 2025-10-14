@@ -56,6 +56,9 @@ static struct cam_context *cam_node_get_ctxt_from_free_list(
 		ctx = list_first_entry(&node->free_ctx_list,
 			struct cam_context, list);
 		list_del_init(&ctx->list);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		list_add_tail(&ctx->list, &node->acquired_ctx_list);
+#endif
 	}
 	mutex_unlock(&node->list_mutex);
 	if (ctx)
@@ -70,9 +73,63 @@ void cam_node_put_ctxt_to_free_list(struct kref *ref)
 	struct cam_node *node = ctx->node;
 
 	mutex_lock(&node->list_mutex);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	list_del_init(&ctx->list);
+#endif
 	list_add_tail(&ctx->list, &node->free_ctx_list);
 	mutex_unlock(&node->list_mutex);
 }
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static void cam_node_recycle_ctxt_from_acquired_list(
+	struct cam_node *node)
+{
+	struct cam_context *ctx = NULL;
+	int rc;
+
+	mutex_lock(&node->list_mutex);
+	if (!list_empty(&node->acquired_ctx_list)) {
+		ctx = list_first_entry(&node->acquired_ctx_list,
+			struct cam_context, list);
+
+		list_del_init(&ctx->list);
+	}
+	mutex_unlock(&node->list_mutex);
+
+	if (!ctx)
+		return;
+
+	CAM_WARN(CAM_CORE, "[%s] Recycling ctx_id=%d, ctx_released=%d",
+		node->name, ctx->ctx_id, ctx->ctx_released);
+
+	if (ctx->ctx_released == false) {
+		struct cam_release_dev_cmd release;
+
+		release.dev_handle = ctx->dev_hdl;
+		release.session_handle = ctx->session_hdl;
+
+		rc = cam_context_handle_release_dev(ctx, &release);
+		if (rc)
+			CAM_ERR(CAM_CORE, "context release failed node %s",
+				node->name);
+
+		rc = cam_destroy_device_hdl(release.dev_handle);
+		if (rc)
+			CAM_ERR(CAM_CORE, "destroy device handle is failed node %s",
+				node->name);
+	}
+
+	ctx->dev_hdl = -1;
+	ctx->link_hdl = -1;
+	ctx->session_hdl = -1;
+	ctx->state = CAM_CTX_AVAILABLE;
+	ctx->ctx_released = true;
+
+	mutex_lock(&node->list_mutex);
+	list_add_tail(&ctx->list, &node->free_ctx_list);
+	mutex_unlock(&node->list_mutex);
+}
+#endif
 
 static int __cam_node_handle_query_cap(struct cam_node *node,
 	struct cam_query_cap_cmd *query)
@@ -106,9 +163,18 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 		CAM_ERR(CAM_CORE, "No free ctx in free list node %s",
 			node->name);
 		cam_node_print_ctx_state(node);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		cam_node_recycle_ctxt_from_acquired_list(node);
 
+		ctx = cam_node_get_ctxt_from_free_list(node);
+		if (!ctx) {
+			rc = -ENOMEM;
+			goto err;
+		}
+#else
 		rc = -ENOMEM;
 		goto err;
+#endif
 	}
 
 	rc = cam_context_handle_acquire_dev(ctx, acquire);
@@ -117,6 +183,10 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 			node->name);
 		goto free_ctx;
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	ctx->ctx_released = false;
+#endif
 
 	CAM_DBG(CAM_CORE, "[%s] Acquire ctx_id %d",
 		node->name, ctx->ctx_id);
@@ -340,6 +410,10 @@ destroy_dev_hdl:
 		node->name, ctx->ctx_id,
 		atomic_read(&(ctx->refcount.refcount.refs)));
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	ctx->ctx_released = true;
+#endif
+
 	return rc;
 }
 
@@ -501,6 +575,9 @@ int cam_node_init(struct cam_node *node, struct cam_hw_mgr_intf *hw_mgr_intf,
 
 	mutex_init(&node->list_mutex);
 	INIT_LIST_HEAD(&node->free_ctx_list);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	INIT_LIST_HEAD(&node->acquired_ctx_list);
+#endif
 	node->ctx_list = ctx_list;
 	node->ctx_size = ctx_size;
 	for (i = 0; i < ctx_size; i++) {

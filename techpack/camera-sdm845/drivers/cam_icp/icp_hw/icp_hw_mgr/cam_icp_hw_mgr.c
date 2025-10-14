@@ -58,7 +58,11 @@
 #define ICP_DEV_TYPE_TO_CLK_TYPE(dev_type) \
 	((dev_type == CAM_ICP_RES_TYPE_BPS) ? ICP_CLK_HW_BPS : ICP_CLK_HW_IPE)
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define ICP_DEVICE_IDLE_TIMEOUT 3000
+#else
 #define ICP_DEVICE_IDLE_TIMEOUT 400
+#endif
 
 static struct cam_icp_hw_mgr icp_hw_mgr;
 
@@ -536,7 +540,11 @@ static int cam_icp_ctx_timer_start(struct cam_icp_hw_ctx_data *ctx_data)
 	int rc = 0;
 
 	rc = crm_timer_init(&ctx_data->watch_dog,
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		ICP_DEVICE_IDLE_TIMEOUT, ctx_data, &cam_icp_ctx_timer_cb);
+#else
 		200, ctx_data, &cam_icp_ctx_timer_cb);
+#endif
 	if (rc)
 		CAM_ERR(CAM_ICP, "Failed to start timer");
 
@@ -2523,9 +2531,16 @@ static int cam_icp_mgr_abort_handle(
 		rc = -ETIMEDOUT;
 		CAM_ERR(CAM_ICP, "FW timeout/err in abort handle command");
 		cam_hfi_queue_dump();
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	} else {
+		kfree(abort_cmd);
+#endif
 	}
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	kfree(abort_cmd);
+#endif
+
 	return rc;
 }
 
@@ -2580,8 +2595,14 @@ static int cam_icp_mgr_destroy_handle(
 			HFI_DEBUG_MODE_QUEUE)
 			cam_icp_mgr_process_dbg_buf();
 		cam_hfi_queue_dump();
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	} else {
+		kfree(destroy_cmd);
+#endif
 	}
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	kfree(destroy_cmd);
+#endif
 	return rc;
 }
 
