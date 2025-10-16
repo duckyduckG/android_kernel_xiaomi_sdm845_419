@@ -1022,7 +1022,8 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	case CAM_IR_UPDATE: {
 		struct cam_sensor_i2c_reg_setting user_reg_setting;
-		struct cam_sensor_i2c_reg_array i2c_reg_setting[cmd->size];
+		struct cam_sensor_i2c_reg_array *i2c_reg_setting = NULL;
+		int i;
 
 		rc = copy_from_user(&user_reg_setting, (void __user *)cmd->handle, sizeof(user_reg_setting));
 		if (rc < 0) {
@@ -1030,17 +1031,34 @@ int32_t cam_sensor_driver_cmd(struct cam_sensor_ctrl_t *s_ctrl,
 			goto release_mutex;
 		}
 
-		rc = copy_from_user(i2c_reg_setting, (void __user *)user_reg_setting.reg_setting, sizeof(i2c_reg_setting));
-		if (rc < 0) {
-			CAM_ERR(CAM_SENSOR, "Copy i2c setting from user space failed\n");
+		CAM_INFO(CAM_SENSOR, "CAM_IR_UPDATE reg setting size = %d", user_reg_setting.size);
+		i2c_reg_setting = kzalloc(sizeof(struct cam_sensor_i2c_reg_array) *
+			user_reg_setting.size, GFP_KERNEL);
+		if (!i2c_reg_setting) {
+			rc = -ENOMEM;
+			CAM_ERR(CAM_SENSOR, "kzalloc memory failed\n");
 			goto release_mutex;
 		}
 
+		rc = copy_from_user(i2c_reg_setting, (void __user *)user_reg_setting.reg_setting,
+			sizeof(struct cam_sensor_i2c_reg_array) * user_reg_setting.size);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR, "Copy i2c setting from user space failed\n");
+			kfree(i2c_reg_setting);
+			goto release_mutex;
+		}
 		user_reg_setting.reg_setting = i2c_reg_setting;
+
+		for (i = 0; i < user_reg_setting.size; i++) {
+			CAM_INFO(CAM_SENSOR, "CAM_IR_UPDATE reg_addr=0x%x, reg_value=0x%x",
+				i2c_reg_setting[i].reg_addr, i2c_reg_setting[i].reg_data);
+		}
 
 		rc = camera_io_dev_write(&s_ctrl->io_master_info, &user_reg_setting);
 		if (rc < 0)
 			CAM_ERR(CAM_SENSOR, "Write setting failed, rc = %d\n", rc);
+
+		kfree(i2c_reg_setting);
 	}
 		break;
 	case CAM_IR_GET_POWER_STATE: {
