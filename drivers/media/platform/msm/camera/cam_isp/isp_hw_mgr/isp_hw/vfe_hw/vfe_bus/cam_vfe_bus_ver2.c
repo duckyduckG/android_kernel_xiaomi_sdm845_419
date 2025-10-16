@@ -879,16 +879,42 @@ static int cam_vfe_bus_acquire_wm(
 			rsrc_data->stride = rsrc_data->width;
 			break;
 		case CAM_FORMAT_PLAIN16_10:
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 		case CAM_FORMAT_PLAIN16_12:
 		case CAM_FORMAT_PLAIN16_14:
 		case CAM_FORMAT_PLAIN16_16:
 		case CAM_FORMAT_PLAIN32_20:
+#endif
 			rsrc_data->width = CAM_VFE_RDI_BUS_DEFAULT_WIDTH;
 			rsrc_data->height = 0;
 			rsrc_data->stride = CAM_VFE_RDI_BUS_DEFAULT_STRIDE;
 			rsrc_data->pack_fmt = 0x0;
 			rsrc_data->en_cfg = 0x3;
 			break;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		case CAM_FORMAT_PLAIN16_12:
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->pack_fmt = 0x3;
+			rsrc_data->width = rsrc_data->width * 2;
+			rsrc_data->stride = rsrc_data->width;
+			break;
+		case CAM_FORMAT_PLAIN16_14:
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->pack_fmt = 0x4;
+			rsrc_data->width = rsrc_data->width * 2;
+			rsrc_data->stride = rsrc_data->width;
+			break;
+		case CAM_FORMAT_PLAIN16_16:
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->pack_fmt = 0x5;
+			rsrc_data->width = rsrc_data->width * 2;
+			rsrc_data->stride = rsrc_data->width;
+			break;
+		case CAM_FORMAT_PLAIN32_20:
+			rsrc_data->en_cfg = 0x1;
+			rsrc_data->pack_fmt = 0x9;
+			break;
+#endif
 		case CAM_FORMAT_PLAIN64:
 			rsrc_data->en_cfg = 0x1;
 			rsrc_data->pack_fmt = 0xA;
@@ -1146,6 +1172,12 @@ static int cam_vfe_bus_stop_wm(struct cam_isp_resource_node *wm_res)
 			common_data->bus_irq_controller,
 			wm_res->irq_handle);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	/* Halt & Reset WM */
+	cam_io_w_mb(BIT(rsrc_data->index),
+		common_data->mem_base + common_data->common_reg->sw_reset);
+#endif
+
 	wm_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 	rsrc_data->init_cfg_done = false;
 	rsrc_data->hfr_cfg_done = false;
@@ -1230,7 +1262,7 @@ static int cam_vfe_bus_handle_wm_done_bottom_half(void *wm_node,
 	return rc;
 }
 
-
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 static int cam_vfe_bus_err_bottom_half(void *ctx_priv,
 	void *evt_payload_priv)
 {
@@ -1322,6 +1354,7 @@ static int cam_vfe_bus_err_bottom_half(void *ctx_priv,
 	cam_vfe_bus_put_evt_payload(common_data, &evt_payload);
 	return 0;
 }
+#endif
 
 static int cam_vfe_bus_init_wm_resource(uint32_t index,
 	struct cam_vfe_bus_ver2_priv    *ver2_bus_priv,
@@ -1680,6 +1713,9 @@ static int cam_vfe_bus_start_comp_grp(struct cam_isp_resource_node *comp_grp)
 static int cam_vfe_bus_stop_comp_grp(struct cam_isp_resource_node *comp_grp)
 {
 	int rc = 0;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	uint32_t addr_sync_cfg;
+#endif
 	struct cam_vfe_bus_ver2_comp_grp_data      *rsrc_data =
 		comp_grp->res_priv;
 	struct cam_vfe_bus_ver2_common_data        *common_data =
@@ -1695,6 +1731,53 @@ static int cam_vfe_bus_stop_comp_grp(struct cam_isp_resource_node *comp_grp)
 			common_data->bus_irq_controller,
 			comp_grp->irq_handle);
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	cam_io_w_mb(rsrc_data->composite_mask, common_data->mem_base +
+		rsrc_data->hw_regs->comp_mask);
+	if (rsrc_data->comp_grp_type >= CAM_VFE_BUS_VER2_COMP_GRP_DUAL_0 &&
+		rsrc_data->comp_grp_type <= CAM_VFE_BUS_VER2_COMP_GRP_DUAL_5) {
+
+		int dual_comp_grp = (rsrc_data->comp_grp_type -
+			CAM_VFE_BUS_VER2_COMP_GRP_DUAL_0);
+
+		if (rsrc_data->is_master) {
+			int intra_client_en = cam_io_r_mb(
+				common_data->mem_base +
+				common_data->common_reg->dual_master_comp_cfg);
+
+			/*
+			 * 2 Bits per comp_grp. Hence left shift by
+			 * comp_grp * 2
+			 */
+			intra_client_en &=
+				~(rsrc_data->intra_client_mask <<
+					dual_comp_grp * 2);
+
+			cam_io_w_mb(intra_client_en, common_data->mem_base +
+				common_data->common_reg->dual_master_comp_cfg);
+		}
+
+		addr_sync_cfg = cam_io_r_mb(common_data->mem_base +
+			common_data->common_reg->addr_sync_cfg);
+		addr_sync_cfg &= ~(1 << dual_comp_grp);
+		addr_sync_cfg &= ~(CAM_VFE_BUS_INTRA_CLIENT_MASK <<
+			((dual_comp_grp * 2) +
+			CAM_VFE_BUS_ADDR_SYNC_INTRA_CLIENT_SHIFT));
+		cam_io_w_mb(addr_sync_cfg, common_data->mem_base +
+			common_data->common_reg->addr_sync_cfg);
+
+		cam_io_w_mb(0, common_data->mem_base +
+			rsrc_data->hw_regs->addr_sync_mask);
+		common_data->addr_no_sync |= rsrc_data->composite_mask;
+		cam_io_w_mb(common_data->addr_no_sync, common_data->mem_base +
+			common_data->common_reg->addr_sync_no_sync);
+		CAM_DBG(CAM_ISP, "addr_sync_cfg: 0x% addr_no_sync_cfg: 0x%x",
+			addr_sync_cfg, common_data->addr_no_sync);
+
+	}
+#endif
+
 	comp_grp->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 
 	return rc;
@@ -2407,12 +2490,14 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 	struct cam_buf_io_cfg                    *io_cfg;
 	struct cam_vfe_bus_ver2_vfe_out_data     *vfe_out_data = NULL;
 	struct cam_vfe_bus_ver2_wm_resource_data *wm_data = NULL;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	struct cam_vfe_bus_ver2_reg_offset_ubwc_client *ubwc_client = NULL;
+	uint32_t k, loop_size = 0;
+#endif
 	uint32_t *reg_val_pair;
-	uint32_t  i, j, k, size = 0;
+	uint32_t  i, j, size = 0;
 	uint32_t  frame_inc = 0, ubwc_bw_limit = 0, camera_hw_version, val;
 	int rc = 0;
-	uint32_t loop_size = 0;
 
 	bus_priv = (struct cam_vfe_bus_ver2_priv  *) priv;
 	update_buf =  (struct cam_isp_hw_get_cmd_update *) cmd_args;
@@ -2444,7 +2529,9 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 		}
 
 		wm_data = vfe_out_data->wm_res[i]->res_priv;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 		ubwc_client = wm_data->hw_regs->ubwc_regs;
+#endif
 		/* update width register */
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			wm_data->hw_regs->buffer_width_cfg,
@@ -2516,8 +2603,14 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 					 * update offset value.
 					 */
 					CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair,
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 						j, ubwc_client->h_init,
 						wm_data->offset);
+#else
+						j,
+						wm_data->hw_regs->ubwc_regs->
+						h_init, wm_data->offset);
+#endif
 					wm_data->h_init = wm_data->offset;
 				}
 			} else if (wm_data->h_init !=
@@ -2545,7 +2638,12 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 				io_cfg->planes[i].meta_stride ||
 				!wm_data->init_cfg_done) {
 				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 					ubwc_client->meta_stride,
+#else
+					wm_data->hw_regs->ubwc_regs->
+					meta_stride,
+#endif
 					io_cfg->planes[i].meta_stride);
 				wm_data->ubwc_meta_stride =
 					io_cfg->planes[i].meta_stride;
@@ -2569,7 +2667,12 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 				io_cfg->planes[i].meta_offset ||
 				!wm_data->init_cfg_done) {
 				CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 					ubwc_client->meta_offset,
+#else
+					wm_data->hw_regs->ubwc_regs->
+					meta_offset,
+#endif
 					io_cfg->planes[i].meta_offset);
 				wm_data->ubwc_meta_offset =
 					io_cfg->planes[i].meta_offset;
@@ -2611,6 +2714,22 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 			}
 		}
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		/* WM Image address */
+		if (wm_data->en_ubwc)
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->image_addr,
+				(update_buf->wm_update->image_buf[i] +
+				io_cfg->planes[i].meta_size));
+		else
+			CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
+				wm_data->hw_regs->image_addr,
+				update_buf->wm_update->image_buf[i] +
+				wm_data->offset);
+		CAM_DBG(CAM_ISP, "WM %d image address 0x%x",
+			wm_data->index, reg_val_pair[j-1]);
+#endif
+
 		if (wm_data->en_ubwc) {
 			frame_inc = ALIGNUP(io_cfg->planes[i].plane_stride *
 			    io_cfg->planes[i].slice_height, 4096);
@@ -2626,6 +2745,7 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 				io_cfg->planes[i].slice_height;
 		}
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 		if (wm_data->index < 3)
 			loop_size = wm_data->irq_subsample_period + 1;
 		else
@@ -2647,6 +2767,7 @@ static int cam_vfe_bus_update_wm(void *priv, void *cmd_args,
 			CAM_DBG(CAM_ISP, "WM %d image address 0x%x",
 				wm_data->index, reg_val_pair[j-1]);
 		}
+#endif
 
 		CAM_VFE_ADD_REG_VAL_PAIR(reg_val_pair, j,
 			wm_data->hw_regs->frame_inc, frame_inc);
@@ -2882,7 +3003,11 @@ static int cam_vfe_bus_init_hw(void *hw_priv,
 		bus_error_irq_mask,
 		bus_priv,
 		cam_vfe_bus_error_irq_top_half,
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		NULL,
+#else
 		cam_vfe_bus_err_bottom_half,
+#endif
 		bus_priv->tasklet_info,
 		&tasklet_bh_api);
 
