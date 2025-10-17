@@ -18,6 +18,7 @@
 #include <linux/iommu.h>
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
+#include <linux/dma-iommu.h>
 #include <linux/msm_dma_iommu_mapping.h>
 #include <linux/workqueue.h>
 #include <linux/genalloc.h>
@@ -3204,6 +3205,7 @@ static int cam_smmu_setup_cb(struct cam_context_bank_info *cb,
 			rc = -ENODEV;
 			goto end;
 		}
+		iommu_dma_enable_best_fit_algo(dev);
 		cb->state = CAM_SMMU_ATTACH;
 	} else {
 		CAM_ERR(CAM_SMMU, "Context bank does not have IO region");
