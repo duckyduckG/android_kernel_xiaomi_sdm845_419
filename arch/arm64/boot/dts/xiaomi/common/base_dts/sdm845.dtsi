@@ -61,6 +61,7 @@
 };
 
 /* sdm845.dtsi */
+#include "sdm845-gpu.dtsi"
 #include "sdm845-670-usb-common.dtsi"
 #include "sdm845-camera.dtsi"
 #include "sdm845-pcie.dtsi"
