@@ -1,0 +1,16 @@
+&cam_res_mgr_active {
+    mux {
+        pins = "";
+    };
+    config {
+        pins = "";
+    };
+};
+&cam_res_mgr_suspend {
+    mux {
+        pins = "";
+    };
+    config {
+        pins = "";
+    };
+};

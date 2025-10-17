@@ -1,0 +1,11 @@
+&i2c_freq_100Khz {
+    hw-scl-stretch-en = <1>;
+};
+
+&i2c_freq_400Khz {
+    hw-scl-stretch-en = <1>;
+};
+
+&i2c_freq_1Mhz {
+    hw-scl-stretch-en = <1>;
+};

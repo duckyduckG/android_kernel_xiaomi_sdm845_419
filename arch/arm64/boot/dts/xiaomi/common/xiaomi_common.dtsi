@@ -1,0 +1,128 @@
+/*
+ * Common nodes between xiaomi-sdm845 devices
+ */
+
+&qupv3_se10_i2c {
+	#include "../../qcom/smb1355.dtsi"
+};
+
+&removed_region1 {
+	reg = <0 0x86200000 0 0x4700000>;
+};
+
+&qcom_seecom {
+	reg = <0x86d00000 0x03C00000>;
+};
+
+&reserved_memory {
+	ramdump_fb_mem: ramdump_fb_region@af000000 {
+		compatible = "removed-dma-pool";
+		no-map;
+		reg = <0 0xaf000000 0 0x1000000>;
+	};
+};
+
+&vendor {
+	bluetooth: bt_wcn3990 {
+		compatible = "qca,wcn3990";
+		qca,bt-vdd-core-supply = <&pm8998_l7>;
+		qca,bt-vdd-pa-supply = <&pm8998_l17>;
+		qca,bt-vdd-ldo-supply = <&pm8998_l25>;
+
+		qca,bt-vdd-core-voltage-level = <1800000 1800000>;
+		qca,bt-vdd-pa-voltage-level = <1304000 1304000>;
+		qca,bt-vdd-ldo-voltage-level = <3312000 3312000>;
+
+		qca,bt-vdd-core-current-level = <1>; /* LPM/PFM */
+		qca,bt-vdd-pa-current-level = <1>; /* LPM/PFM */
+		qca,bt-vdd-ldo-current-level = <1>; /* LPM/PFM */
+	};
+};
+
+&soc {
+	xiaomi_touch {
+		compatible = "xiaomi-touch";
+		status = "ok";
+		touch,name = "xiaomi-touch";
+	};
+};
+
+&pmi8998_rgb_led {
+	red {
+		label = "white";
+	};
+	/delete-node/ green;
+	/delete-node/ blue;
+};
+
+&qupv3_se6_4uart {
+	status = "ok";
+};
+
+&usb1 {
+	status = "disabled";
+	extcon = <&extcon_usb1>;
+};
+
+&qusb_phy1 {
+	status = "okay";
+};
+
+&ext_5v_boost {
+	status = "ok";
+};
+
+&usb_qmp_phy {
+	status = "okay";
+};
+
+&wil6210 {
+	status = "ok";
+};
+
+&qcom_qbt1000 {
+	status = "disabled";
+};
+
+&flash_led {
+	pmi8998_flashlight: qcom,flashlight {
+		label = "flash";
+		qcom,led-name = "flashlight";
+		qcom,max-current = <750>;
+		qcom,default-led-trigger = "flashlight_trigger";
+		qcom,id = <3>;
+		qcom,current-ma = <500>;
+		qcom,duration-ms = <1280>;
+		qcom,ires-ua = <12500>;
+		qcom,hdrm-voltage-mv = <325>;
+		qcom,hdrm-vol-hi-lo-win-mv = <100>;
+	};
+};
+
+#include "xiaomi_common_thermal.dtsi"
+
+&usb0 {
+	dwc3@a600000 {
+		maximum-speed = "high-speed";
+	};
+};
+
+&usb1 {
+	dwc3@a800000 {
+		maximum-speed = "high-speed";
+	};
+};
+
+&pcie0 {
+	status = "disabled";
+};
+
+&pcie1 {
+	status = "disabled";
+};
+
+&pmi8998_pdphy {
+	/*mi,limit_pd_vbus 1:enable 0:disable*/
+	mi,limit_pd_vbus = <1>;
+	mi,pd_vbus_max_limit = <9000000>;
+};

@@ -1,0 +1,2 @@
+#include "pm8998-overlay.dtsi"
+#include "pmi8998-overlay.dtsi"
