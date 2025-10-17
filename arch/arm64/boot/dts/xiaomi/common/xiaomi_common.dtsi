@@ -6,6 +6,14 @@
 	#include "../../qcom/smb1355.dtsi"
 };
 
+&smb1355_0 {
+	status = "okay";
+};
+
+&smb1355_1 {
+	status = "okay";
+};
+
 &removed_region1 {
 	reg = <0 0x86200000 0 0x4700000>;
 };
