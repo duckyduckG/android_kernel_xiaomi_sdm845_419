@@ -224,4 +224,12 @@
 			};
 		};
 	};
+
+	pm8005_tz {
+		disable-thermal-zone;
+	};
+
+	pmi8998_tz {
+		disable-thermal-zone;
+	};
 };
