@@ -33,3 +33,18 @@
     qcom,max-current = <300>;
     qcom,current-ma = <75>;
 };
+
+&pmi8998_haptics {
+    compatible = "qcom,qpnp-haptics";
+    qcom,pmic-misc = <&pmi8998_misc>;
+    qcom,misc-clk-trim-error-reg = <0xf3>;
+    qcom,actuator-type = <0>;
+    qcom,play-mode = "direct";
+    qcom,ilim-ma = <800>;
+    qcom,sc-dbc-cycles = <8>;
+    qcom,wave-play-rate-us = <6667>;
+    qcom,en-brake;
+    qcom,lra-high-z = "opt1";
+    qcom,lra-auto-res-mode = "qwd";
+    qcom,lra-res-cal-period = <4>;
+};
