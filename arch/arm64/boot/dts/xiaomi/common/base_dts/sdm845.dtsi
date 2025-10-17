@@ -1,0 +1,68 @@
+/* sdm845.dtsi */
+&firmware {
+	android {
+		/delete-node/ vbmeta;
+		/delete-node/ fstab;
+	};
+};
+
+&xbl_region {
+	reg = <0 0x85d00000 0 0x200000>;
+};
+
+&pil_adsp_mem {
+	reg = <0 0x8c500000 0 0x1e00000>;
+};
+
+&wlan_fw_region {
+	reg = <0 0x8e300000 0 0x100000>;
+};
+
+&pil_modem_mem {
+	reg = <0 0x8e400000 0 0x7800000>;
+};
+
+&pil_video_mem {
+	reg = <0 0x95c00000 0 0x500000>;
+};
+
+&pil_cdsp_mem {
+	reg = <0 0x96100000 0 0x800000>;
+};
+
+&pil_mba_mem {
+	reg = <0 0x96900000 0 0x200000>;
+};
+
+&pil_slpi_mem {
+	reg = <0 0x96b00000 0 0x1400000>;
+};
+
+&pil_spss_mem {
+	reg = <0 0x97f00000 0 0x100000>;
+};
+
+&wdog {
+	qcom,bark-time = <20000>;
+	qcom,pet-time = <15000>;
+};
+
+&ipa_hw {
+	/delete-property/ qcom,smmu-fast-map;
+};
+
+&soc {
+	qcom,msm-imem@146bf000 {
+		dload_type@18 {
+			compatible = "qcom,msm-imem-dload-type";
+			reg = <0x18 4>;
+		};
+	};
+};
+
+/* sdm845.dtsi */
+#include "sdm845-670-usb-common.dtsi"
+#include "sdm845-camera.dtsi"
+#include "sdm845-pcie.dtsi"
+#include "sdm845-pinctrl.dtsi"
+#include "sdm845-regulator.dtsi"

@@ -1,0 +1,3 @@
+&pm8998_l14 {
+    qcom,init-mode = <RPMH_REGULATOR_MODE_HPM>;
+};
