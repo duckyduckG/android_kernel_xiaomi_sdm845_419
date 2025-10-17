@@ -35,6 +35,9 @@ subdir-y += zte
 else
     ifeq ($(CONFIG_ARCH_SDM845),y)
         subdir-y += qcom
+    ifeq ($(CONFIG_MACH_XIAOMI),y)
+        subdir-y += xiaomi
+    endif
     else
         subdir-y += vendor
     endif

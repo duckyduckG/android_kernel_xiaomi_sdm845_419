@@ -1,0 +1,14 @@
+#include "../../../qcom/sdm845-audio-overlay.dtsi"
+
+&snd_934x {
+    /delete-property/ qcom,msm-mbhc-hs-mic-max-threshold-mv;
+    /delete-property/ qcom,msm-mbhc-hs-mic-min-threshold-mv;
+    /delete-property/ qcom,usbc-analog-en2-gpio;
+};
+
+&wcd934x_cdc {
+    qcom,cdc-micbias1-mv = <2700>;
+    qcom,cdc-micbias2-mv = <1800>;
+    qcom,cdc-micbias3-mv = <2700>;
+    qcom,cdc-micbias4-mv = <2700>;
+};
