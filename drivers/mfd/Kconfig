@@ -1912,5 +1912,10 @@ config RAVE_SP_CORE
 	  Select this to get support for the Supervisory Processor
 	  device found on several devices in RAVE line of hardware.
 
+config MFD_SPK_ID
+	bool "Speaker ID platform driver"
+	help
+	  Xiaomi speaker ID driver.
+
 endmenu
 endif
