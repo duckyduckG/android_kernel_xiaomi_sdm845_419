@@ -20,7 +20,7 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <linux/timer.h>
-#include <linux/qpnp/pwm.h>
+#include <linux/pwm.h>
 #include <linux/cdev.h>
 #include <asm/uaccess.h>
 #include <linux/poll.h>
@@ -211,7 +211,7 @@ static int lm3644_control(struct lm3644_chip_data *chip,
 			dev_dbg(chip->dev, "Simulative PWM disabled\n");
 		}
 
-		cancel_work(&chip->ir_stop_work);
+		cancel_work_sync(&chip->ir_stop_work);
 		del_timer(&chip->ir_stop_timer);
 	}
 
@@ -427,9 +427,9 @@ static void lm3644_ir_stop_work(struct work_struct *work)
 	lm3644_ir_brightness_set(&chip->cdev_ir, LED_OFF);
 }
 
-static void lm3644_ir_stop_timer(unsigned long data)
+static void lm3644_ir_stop_timer(struct timer_list *t)
 {
-	struct lm3644_chip_data *chip = (struct lm3644_chip_data*)data;
+	struct lm3644_chip_data *chip = from_timer(chip, t, ir_stop_timer);
 
 	dev_err(chip->dev, "Force shutdown IR LED after %d msecs\n",
 		chip->pdata->ir_prot_time);
@@ -493,7 +493,7 @@ static unsigned int lm3644_poll(struct file *filp, poll_table *wait)
 		ret = lm3644_control(chip, LED_OFF, MODES_STANDBY);
 		mutex_unlock(&chip->lock);
 
-		lm3644_ir_stop_timer((unsigned long)chip);
+		lm3644_ir_stop_timer(&chip->ir_stop_timer);
 
 		if (gpio_is_valid(chip->pdata->hwen_gpio)) {
 			ret = gpio_direction_output(chip->pdata->hwen_gpio, 0);
@@ -1045,8 +1045,7 @@ static int lm3644_probe(struct i2c_client *client,
 	i2c_set_clientdata(client, chip);
 
 	INIT_WORK(&chip->ir_stop_work, lm3644_ir_stop_work);
-	setup_timer(&chip->ir_stop_timer, lm3644_ir_stop_timer,
-		(unsigned long)chip);
+	timer_setup(&chip->ir_stop_timer, lm3644_ir_stop_timer, 0);
 
 	err = lm3644_chip_init(chip);
 	if (err < 0)
@@ -1187,7 +1186,7 @@ static int lm3644_remove(struct i2c_client *client)
 	if (chip->chr_dev)
 		class_destroy(chip->chr_class);
 
-	cancel_work(&chip->ir_stop_work);
+	cancel_work_sync(&chip->ir_stop_work);
 	del_timer(&chip->ir_stop_timer);
 	led_classdev_unregister(&chip->cdev_torch);
 	led_classdev_unregister(&chip->cdev_ir);
