@@ -3317,13 +3317,13 @@ static void fts_enter_pointer_event_handler(struct fts_ts_info *info,
 		input_report_key(info->input_dev, BTN_TOOL_FINGER, 1);
 
 	/*input_report_abs(info->input_dev, ABS_MT_TRACKING_ID, touchId); */
-		input_report_abs(info->input_dev, ABS_MT_POSITION_X, x);
-		input_report_abs(info->input_dev, ABS_MT_POSITION_Y, y);
-		input_report_abs(info->input_dev, ABS_MT_TOUCH_MAJOR, z);
-		input_report_abs(info->input_dev, ABS_MT_TOUCH_MINOR, z);
-		input_report_abs(info->input_dev, ABS_MT_DISTANCE, distance);
+	input_report_abs(info->input_dev, ABS_MT_POSITION_X, x);
+	input_report_abs(info->input_dev, ABS_MT_POSITION_Y, y);
+	input_report_abs(info->input_dev, ABS_MT_TOUCH_MAJOR, z);
+	input_report_abs(info->input_dev, ABS_MT_TOUCH_MINOR, z);
+	input_report_abs(info->input_dev, ABS_MT_DISTANCE, distance);
 #ifdef CONFIG_INPUT_PRESS_NDT
-		input_report_abs(info->input_dev, ABS_MT_PRESSURE, z);
+	input_report_abs(info->input_dev, ABS_MT_PRESSURE, z);
 #endif
 		input_sync(info->input_dev);
 	dev_dbg(info->dev,
