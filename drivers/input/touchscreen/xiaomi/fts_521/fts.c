@@ -87,6 +87,10 @@
 #include "./../ndt_core.h"
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+#include <linux/input/tp_common.h>
+#endif
+
 /**
  * Event handler installer helpers
  */
@@ -479,6 +483,38 @@ static ssize_t fts_feature_enable_show(struct device *dev,
 	return count;
 }
 #else
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+static ssize_t double_tap_show(struct kobject *kobj,
+			       struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", fts_info->gesture_enabled);
+}
+
+static ssize_t double_tap_store(struct kobject *kobj,
+				struct kobj_attribute *attr, const char *buf,
+				size_t count)
+{
+	int rc, val;
+	struct fts_mode_switch *ms;
+
+	rc = kstrtoint(buf, 10, &val);
+	if (rc)
+		return -EINVAL;
+
+	ms = (struct fts_mode_switch *)
+	    kmalloc(sizeof(struct fts_mode_switch), GFP_ATOMIC);
+
+	fts_info->gesture_enabled = !!val;
+	schedule_work(&ms->switch_mode_work);
+	return count;
+}
+
+static struct tp_common_ops double_tap_ops = {
+	.show = double_tap_show,
+	.store = double_tap_store,
+};
+#endif
 
 #ifdef GRIP_MODE
 /**
@@ -5274,6 +5310,10 @@ static int fts_probe(struct spi_device *client)
 	mutex_init(&(info->input_report_mutex));
 #ifdef GESTURE_MODE
 	mutex_init(&gestureMask_mutex);
+#endif
+
+#ifdef CONFIG_TOUCHSCREEN_COMMON
+	tp_common_set_double_tap_ops(&double_tap_ops);
 #endif
 
 	spin_lock_init(&fts_int);
