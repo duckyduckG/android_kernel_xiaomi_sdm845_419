@@ -54,7 +54,11 @@
 #define CS_DEMUX_OUTPUT_SEL	(GENMASK(3, 0))
 
 /* SE_SPI_TX_TRANS_CFG register fields */
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define CS_TOGGLE		(BIT(1))
+#else
 #define CS_TOGGLE		(BIT(0))
+#endif
 
 /* SE_SPI_WORD_LEN register fields */
 #define WORD_LEN_MSK		(GENMASK(9, 0))
@@ -1375,6 +1379,9 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 				geni_se_rx_dma_unprep(mas->wrapper_dev,
 					xfer->rx_dma, xfer->len);
 		}
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		mas->cur_xfer = NULL;
+#endif
 	} else {
 		mas->num_tx_eot = 0;
 		mas->num_rx_eot = 0;
