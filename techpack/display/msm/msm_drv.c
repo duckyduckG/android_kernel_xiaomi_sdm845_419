@@ -70,6 +70,11 @@
 
 static DEFINE_MUTEX(msm_release_lock);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+atomic_t resume_pending;
+wait_queue_head_t resume_wait_q;
+#endif
+
 static void msm_fb_output_poll_changed(struct drm_device *dev)
 {
 	struct msm_drm_private *priv = NULL;
@@ -715,7 +720,11 @@ static ssize_t idle_encoder_mask_store(struct device *device,
 	int rc;
 	unsigned long flags;
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	rc = kstrtouint(buf, 10, &encoder_mask);
+#else
 	rc = kstrtouint(buf, 0, &encoder_mask);
+#endif
 	if (rc)
 		return rc;
 
@@ -1883,6 +1892,21 @@ static struct drm_driver msm_driver = {
 };
 
 #ifdef CONFIG_PM_SLEEP
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static int msm_pm_prepare(struct device *dev)
+{
+	atomic_inc(&resume_pending);
+	return 0;
+}
+
+static void msm_pm_complete(struct device *dev)
+{
+	atomic_set(&resume_pending, 0);
+	wake_up_all(&resume_wait_q);
+	return;
+}
+#endif
+
 static int msm_pm_suspend(struct device *dev)
 {
 	struct drm_device *ddev;
@@ -1968,6 +1992,10 @@ static int msm_runtime_resume(struct device *dev)
 #endif
 
 static const struct dev_pm_ops msm_pm_ops = {
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	.prepare = msm_pm_prepare,
+	.complete = msm_pm_complete,
+#endif
 	SET_SYSTEM_SLEEP_PM_OPS(msm_pm_suspend, msm_pm_resume)
 	SET_RUNTIME_PM_OPS(msm_runtime_suspend, msm_runtime_resume, NULL)
 };

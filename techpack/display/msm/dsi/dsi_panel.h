@@ -27,6 +27,11 @@
 #define DSI_CMD_PPS_SIZE 135
 
 #define DSI_MODE_MAX 32
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define BUF_LEN_MAX    256
+#define PANEL_BL_INFO_NUM    4
+#define HIST_BL_OFFSET_LIMIT 48
+#endif
 
 /*
  * Defining custom dsi msg flag,
@@ -115,8 +120,14 @@ struct dsi_backlight_config {
 	enum dsi_backlight_type type;
 	enum bl_update_flag bl_update;
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	u32 bl_update_delay;
+#endif
 	u32 bl_min_level;
 	u32 bl_max_level;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	u32 bl_typical_level;
+#endif
 	u32 brightness_max_level;
 	u32 bl_level;
 	u32 bl_scale;
@@ -125,10 +136,18 @@ struct dsi_backlight_config {
 	u32 bl_dcs_subtype;
 
 	int en_gpio;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	bool bl_remap_flag;
+	bool doze_brightness_varible_flag;
+	bool dcs_type_ss;
+#endif
 	/* PWM params */
 	struct pwm_device *pwm_bl;
 	bool pwm_enabled;
 	u32 pwm_period_usecs;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int ss_panel_id;
+#endif
 
 	/* WLED params */
 	struct led_trigger *wled;
@@ -170,7 +189,22 @@ struct drm_panel_esd_config {
 	u8 *return_buf;
 	u8 *status_buf;
 	u32 groups;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int esd_err_irq_gpio;
+	int esd_err_irq;
+	int esd_err_irq_flags;
+#endif
 };
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+struct dsi_read_config {
+	bool enabled;
+	struct dsi_panel_cmd_set read_cmd;
+	u32 cmds_rlen;
+	u32 valid_bits;
+	u8 rbuf[64];
+};
+#endif
 
 struct dsi_panel {
 	const char *name;
@@ -217,10 +251,60 @@ struct dsi_panel {
 	bool te_using_watchdog_timer;
 	struct dsi_qsync_capabilities qsync_caps;
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	bool dispparam_enabled;
+	bool on_cmds_tuning;
+	bool panel_reset_skip;
+	u32 skip_dimmingon;
+#endif
+
 	char dsc_pps_cmd[DSI_CMD_PPS_SIZE];
 	enum dsi_dms_mode dms_mode;
 
 	bool sync_broadcast_en;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	bool tddi_doubleclick_flag;
+
+	u32 panel_on_dimming_delay;
+	u32 last_bl_lvl;
+	struct delayed_work cmds_work;
+
+	bool dsi_panel_off_mode;
+	/* check disable cabc when panel off */
+	bool onoff_mode_enabled;
+	bool disable_cabc;
+	bool off_keep_reset;
+	struct dsi_read_config brightness_cmds;
+	struct dsi_read_config xy_coordinate_cmds;
+	struct dsi_read_config max_luminance_cmds;
+	struct dsi_read_config max_luminance_valid_cmds;
+	struct dsi_read_config panel_ddic_id_cmds;
+	u8 panel_read_data[BUF_LEN_MAX];
+	u32 panel_bl_info[PANEL_BL_INFO_NUM];
+
+	u32 hist_bl_offset;
+
+	s32 backlight_delta;
+	bool fod_hbm_enabled;
+	bool in_aod;
+	u32 doze_backlight_threshold;
+	u32 dc_threshold;
+	ktime_t fod_hbm_off_time;
+	bool dc_enable;
+	/* Display count */
+	u64 boottime;
+	u64 bootRTCtime;
+	u64 bootdays;
+	u64 panel_active;
+	u64 kickoff_count;
+	u64 bl_duration;
+	u64 bl_level_integral;
+	u64 bl_highlevel_duration;
+	u64 bl_lowlevel_duration;
+	u64 hbm_duration;
+	u64 hbm_times;
+	u64 panel_dead;
+#endif
 
 	int panel_test_gpio;
 	int power_mode;
@@ -310,6 +394,10 @@ int dsi_panel_unprepare(struct dsi_panel *panel);
 int dsi_panel_post_unprepare(struct dsi_panel *panel);
 
 int dsi_panel_set_backlight(struct dsi_panel *panel, u32 bl_lvl);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+int dsi_panel_enable_doze_backlight(struct dsi_panel *panel, u32 bl_lvl);
+#endif
 
 int dsi_panel_update_pps(struct dsi_panel *panel);
 
