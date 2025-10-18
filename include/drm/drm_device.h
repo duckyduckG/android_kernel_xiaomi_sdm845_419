@@ -220,6 +220,12 @@ struct drm_device {
 	/*@} */
 	int switch_power_state;
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int doze_state;
+	bool fp_quickon;
+	int pre_state;
+	int doze_brightness;
+#endif
 	/**
 	 * @fb_helper:
 	 *
