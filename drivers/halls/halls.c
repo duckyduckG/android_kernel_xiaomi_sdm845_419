@@ -150,7 +150,7 @@ static int __init halls_init(void) {
 
 	INIT_DELAYED_WORK(&hdata->notify_work, halls_notify_work_func);
 
-	hdata->wakelock = wakeup_source_register("halls-ws");
+	hdata->wakelock = wakeup_source_register(NULL, "halls-ws");
 	if (!hdata->wakelock) {
 		pr_err("%s: failed to register wakeup source\n", __func__);
 		ret = -EINVAL;
