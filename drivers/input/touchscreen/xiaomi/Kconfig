@@ -1,0 +1,32 @@
+source "drivers/input/touchscreen/xiaomi/xiaomi_touch/Kconfig"
+source "drivers/input/touchscreen/xiaomi/synaptics_dsx_force/Kconfig"
+source "drivers/input/touchscreen/xiaomi/fts_521/Kconfig"
+source "drivers/input/touchscreen/xiaomi/nt36xxx_mi/Kconfig"
+source "drivers/input/touchscreen/xiaomi/ft5x46/Kconfig"
+source "drivers/input/touchscreen/xiaomi/focaltech_touch_mi/Kconfig"
+
+config SECURE_TOUCH
+	bool "Secure Touch"
+	depends on TOUCHSCREEN_ST_FTS_V521 || TOUCHSCREEN_SYNAPTICS_DSX_FORCE
+
+config I2C_BY_DMA
+	bool "I2C BY DMA"
+
+config INPUT_PRESS_NDT
+	bool "ndt"
+	default n
+	depends on I2C
+	help
+	  Say Y here if you have a press ic ndt.
+
+config INPUT_PRESS_NDT_F60
+	bool "ndt f60"
+	depends on INPUT_PRESS_NDT
+	help
+	  Say Y here if you have a press ic ndt.
+
+config INPUT_PRESS_NDT_M65
+	bool "ndt m65"
+	depends on INPUT_PRESS_NDT
+	help
+	  Say Y here if you have a press ic ndt.
