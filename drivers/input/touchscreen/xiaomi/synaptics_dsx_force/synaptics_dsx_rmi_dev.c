@@ -37,7 +37,7 @@
 #include <linux/interrupt.h>
 #include <linux/delay.h>
 #include <linux/input.h>
-#include <linux/signal.h>
+#include <linux/sched/signal.h>
 #include <linux/sched.h>
 #include <linux/gpio.h>
 #include <linux/uaccess.h>
