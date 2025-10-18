@@ -38,7 +38,7 @@ int gf_parse_dts(struct gf_dev *gf_dev)
 #endif
 
 	/*get reset resource*/
-	gf_dev->reset_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node, "gooidx,gpio-reset", 0);
+	gf_dev->reset_gpio = of_get_named_gpio(gf_dev->spi->dev.of_node, "goodix,gpio-reset", 0);
 	if (!gpio_is_valid(gf_dev->reset_gpio)) {
 		pr_info("RESET GPIO is invalid.\n");
 		return -EPERM;
