@@ -220,6 +220,11 @@ static inline int drm_panel_get_modes(struct drm_panel *panel)
 
 void drm_panel_init(struct drm_panel *panel);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+void drm_panel_reset_skip_enable(bool enable);
+void drm_dsi_ulps_enable(bool enable);
+void drm_dsi_ulps_suspend_enable(bool enable);
+#endif
 int drm_panel_add(struct drm_panel *panel);
 void drm_panel_remove(struct drm_panel *panel);
 
