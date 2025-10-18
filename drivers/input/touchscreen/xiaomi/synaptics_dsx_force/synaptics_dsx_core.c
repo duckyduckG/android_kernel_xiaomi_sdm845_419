@@ -196,6 +196,7 @@ static int synaptics_rmi4_drm_notifier_cb(struct notifier_block *self,
 		unsigned long event, void *data);
 static int synaptics_rmi4_drm_notifier_cb_tddi(struct notifier_block *self,
 		unsigned long event, void *data);
+extern void dsi_panel_doubleclick_enable(bool on);
 #endif
 
 #define DISP_REG_VDD (1<<0)
@@ -6216,7 +6217,7 @@ static int synaptics_rmi4_drm_notifier_cb(struct notifier_block *self,
 				synaptics_rmi4_resume(&rmi4_data->pdev->dev);
 				rmi4_data->fb_ready = true;
 				if (rmi4_data->wakeup_en) {
-					drm_panel_reset_skip_enable(false);
+					dsi_panel_doubleclick_enable(false);
 					//drm_regulator_ctrl(rmi4_data, DISP_REG_ALL, false);
 					drm_dsi_ulps_enable(false);
 					rmi4_data->wakeup_en = false;
@@ -6236,7 +6237,7 @@ static int synaptics_rmi4_drm_notifier_cb(struct notifier_block *self,
 				if (rmi4_data->enable_wakeup_gesture) {
 					rmi4_data->wakeup_en = true;
 					//drm_regulator_ctrl(rmi4_data, DISP_REG_ALL, true);
-					drm_panel_reset_skip_enable(true);
+					dsi_panel_doubleclick_enable(true);
 					drm_dsi_ulps_enable(true);
 				}
 			} else if (*transition == DRM_BLANK_UNBLANK) {
