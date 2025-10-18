@@ -354,6 +354,7 @@ static int tas2559_dev_bulk_read(struct tas2559_priv *pTAS2559,
 {
 	int nResult = 0;
 	unsigned char reg = 0;
+	int i;
 
 	mutex_lock(&pTAS2559->dev_lock);
 
@@ -373,19 +374,40 @@ static int tas2559_dev_bulk_read(struct tas2559_priv *pTAS2559,
 					   TAS2559_BOOK_ID(nRegister), TAS2559_PAGE_ID(nRegister));
 
 	if (nResult >= 0) {
-		reg = TAS2559_PAGE_REG(nRegister);
+		#define STRIDE 4
+		/* Read chunk bytes defined by STRIDE */
+		for (i = 0; i < (nLength / STRIDE); i++) {
+			reg = TAS2559_PAGE_REG(nRegister);
 
-		if (chn == DevA)
-			nResult = tas2559_i2c_bulkread_device(pTAS2559,
+		    if (chn == DevA)
+			    nResult = tas2559_i2c_bulkread_device(pTAS2559,
 							      pTAS2559->mnDevAAddr, reg, pData, nLength);
-		else
-			if (chn == DevB)
-				nResult = tas2559_i2c_bulkread_device(pTAS2559,
+		    else
+			    if (chn == DevB)
+				    nResult = tas2559_i2c_bulkread_device(pTAS2559,
 								      pTAS2559->mnDevBAddr, reg, pData, nLength);
-			else {
-				dev_err(pTAS2559->dev, "%s, chn ERROR %d\n", __func__, chn);
-				nResult = -EINVAL;
-			}
+			    else {
+				    dev_err(pTAS2559->dev, "%s, chn ERROR %d\n", __func__, chn);
+				    nResult = -EINVAL;
+			    }
+		}
+
+		/* Read remaining bytes */
+		if ((nLength % STRIDE) != 0) {
+			reg = TAS2559_PAGE_REG(nRegister);
+
+		    if (chn == DevA)
+			    nResult = tas2559_i2c_bulkread_device(pTAS2559,
+							      pTAS2559->mnDevAAddr, reg, pData, nLength);
+		    else
+			    if (chn == DevB)
+				    nResult = tas2559_i2c_bulkread_device(pTAS2559,
+								      pTAS2559->mnDevBAddr, reg, pData, nLength);
+			    else {
+				    dev_err(pTAS2559->dev, "%s, chn ERROR %d\n", __func__, chn);
+				    nResult = -EINVAL;
+			    }
+		}
 	}
 
 end:
