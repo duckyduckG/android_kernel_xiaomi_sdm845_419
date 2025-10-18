@@ -120,7 +120,7 @@ static int __init ft5x46_spi_init(void)
 {
 	return spi_register_driver(&ft5x46_spi_driver);
 }
-module_init(ft5x0x_spi_init);
+module_init(ft5x46_spi_init);
 
 static void __exit ft5x46_spi_exit(void)
 {
