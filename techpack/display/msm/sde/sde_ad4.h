@@ -46,6 +46,9 @@ enum ad_property {
 	AD_IPC_SUSPEND,
 	AD_IPC_RESUME,
 	AD_IPC_RESET,
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	AD_RESUME,
+#endif
 	AD_PROPMAX,
 };
 

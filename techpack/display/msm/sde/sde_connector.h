@@ -485,6 +485,9 @@ struct sde_connector {
 	bool colorspace_updated;
 
 	bool last_cmd_tx_sts;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	bool panel_dead_skip;
+#endif
 	bool hdr_capable;
 };
 

@@ -920,6 +920,9 @@ struct sde_pingpong_cfg  {
 	SDE_HW_BLK_INFO;
 	const struct sde_pingpong_sub_blks *sblk;
 	int merge_3d_id;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	u32 te_source;
+#endif
 };
 
 /**

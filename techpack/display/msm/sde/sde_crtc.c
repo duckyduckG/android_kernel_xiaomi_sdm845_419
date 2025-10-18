@@ -6418,6 +6418,9 @@ static int _sde_crtc_event_enable(struct sde_kms *kms,
 	spin_lock_irqsave(&crtc->spin_lock, flags);
 	list_for_each_entry(node, &crtc->user_event_list, list) {
 		if (node->event == event) {
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+			list_del(&node->list);
+#endif
 			found = true;
 			break;
 		}
@@ -6518,6 +6521,9 @@ static int _sde_crtc_event_disable(struct sde_kms *kms,
 	 */
 	if (!crtc_drm->enabled) {
 		kfree(node);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		node = NULL;
+#endif
 		return 0;
 	}
 	ret = pm_runtime_get_sync(crtc_drm->dev->dev);
@@ -6525,6 +6531,9 @@ static int _sde_crtc_event_disable(struct sde_kms *kms,
 		SDE_ERROR("failed to enable power resource %d\n", ret);
 		SDE_EVT32(ret, SDE_EVTLOG_ERROR);
 		kfree(node);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		node = NULL;
+#endif
 		return ret;
 	}
 
@@ -6535,6 +6544,9 @@ static int _sde_crtc_event_disable(struct sde_kms *kms,
 		spin_unlock_irqrestore(&crtc->spin_lock, flags);
 	} else {
 		kfree(node);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		node = NULL;
+#endif
 	}
 
 	pm_runtime_put_sync(crtc_drm->dev->dev);
