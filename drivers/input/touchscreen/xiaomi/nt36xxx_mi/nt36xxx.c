@@ -29,7 +29,6 @@
 #ifdef CONFIG_DRM
 #include <drm/drm_notifier.h>
 #include <drm/drm_panel.h>
-#include <linux/fb.h>
 #endif
 
 #include "nt36xxx.h"
@@ -2274,10 +2273,13 @@ static int32_t nvt_ts_resume(struct device *dev)
 #if defined(CONFIG_DRM)
 static int nvt_drm_notifier_callback(struct notifier_block *self, unsigned long event, void *data)
 {
-	struct fb_event *evdata = data;
+	struct drm_notify_data *evdata = data;
 	int *blank;
 	struct nvt_ts_data *ts =
 		container_of(self, struct nvt_ts_data, notifier);
+
+	if (!evdata)
+		return 0;
 
 	if (evdata->data && ts) {
 		blank = evdata->data;
