@@ -35,7 +35,11 @@
 #define PROPERTY_MAXSIZE 32
 
 #define MSM_EEPROM_MEMORY_MAP_MAX_SIZE         80
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define MSM_EEPROM_MAX_MEM_MAP_CNT             36
+#else
 #define MSM_EEPROM_MAX_MEM_MAP_CNT             8
+#endif
 #define MSM_EEPROM_MEM_MAP_PROPERTIES_CNT      8
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
