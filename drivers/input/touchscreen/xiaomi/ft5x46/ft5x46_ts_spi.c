@@ -16,7 +16,7 @@
 #include <linux/input.h>
 #include <linux/module.h>
 #include <linux/spi/spi.h>
-#include "ft5x46_ts.h"
+#include <linux/input/ft5x46_ts.h>
 
 #define FT5X0X_SPI_READ			0x8000
 
