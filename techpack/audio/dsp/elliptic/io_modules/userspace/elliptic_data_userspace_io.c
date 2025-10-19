@@ -46,8 +46,7 @@
 #include <linux/errno.h>
 
 #include <elliptic/elliptic_data_io.h>
-#include "elliptic_device.h"
-
+#include <elliptic/elliptic_device.h>
 
 static dev_t elliptic_userspace_major;
 #define USERSPACE_IO_DEVICE_NAME "elliptic_us_io"

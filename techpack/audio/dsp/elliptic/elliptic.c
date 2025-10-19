@@ -691,7 +691,7 @@ static int32_t elliptic_send_calibration_to_engine(size_t calib_data_size) {
 #endif
 
 
-static int __init elliptic_driver_init(void)
+int __init elliptic_driver_init(void)
 {
 	int err;
 	int i;
@@ -761,7 +761,7 @@ static int __init elliptic_driver_init(void)
 		return -ENOMEM;
 	}
 
-	wakeup_source_init(wake_source, "elliptic_wake_source");
+	wake_source = wakeup_source_register(NULL, "elliptic_wake_source");
 
 #ifdef ELLIPTIC_LOAD_CALIBRATION_DATA_FROM_FILESYSTEM
     /* Code to send calibration to engine */
@@ -778,10 +778,10 @@ fail:
 	return err;
 }
 
-static void elliptic_driver_exit(void)
+void elliptic_driver_exit(void)
 {
 	if (wake_source) {
-		wakeup_source_trash(wake_source);
+		wakeup_source_unregister(wake_source);
 		kfree(wake_source);
 	}
 
