@@ -132,7 +132,11 @@
  * Production test enable
  * 1: enable, 0:disable(default)
  */
+#if defined(CONFIG_TOUCHSCREEN_FTS_MI_FT8719) || defined(CONFIG_TOUCHSCREEN_FTS_MI_FT3518)
 #define FTS_TEST_EN                             1
+#else
+#define FTS_TEST_EN                             0
+#endif
 
 /*
  * Glove mode enable
