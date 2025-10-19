@@ -46,7 +46,7 @@
 #include <linux/errno.h>
 
 #include <elliptic/elliptic_data_io.h>
-#include "elliptic_device.h"
+#include <elliptic/elliptic_device.h>
 
 #include <dsp/apr_elliptic.h>
 #include <dsp/q6afe-v2.h>
