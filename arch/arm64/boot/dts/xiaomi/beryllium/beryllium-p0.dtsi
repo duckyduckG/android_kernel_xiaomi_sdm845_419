@@ -460,6 +460,18 @@
 };
 
 &pm8998_adc_tm {
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	io-channels = <&pm8998_vadc ADC_VPH_PWR>,
+	<&pm8998_vadc ADC_XO_THERM_PU2>,
+	<&pm8998_vadc ADC_AMUX_THM1_PU2>,
+	<&pm8998_vadc ADC_AMUX_THM2_PU2>,
+	<&pm8998_vadc ADC_AMUX_THM3_PU2>,
+	<&pm8998_vadc ADC_AMUX_THM4_PU2>,
+	<&pm8998_vadc ADC_AMUX_THM5_PU2>,
+	<&pm8998_vadc ADC_GPIO1_PU2>; // beryllium-backlight
+
 	backlight_therm {
 		label = "backlight_therm";
 		reg = <ADC_GPIO1_PU2>;
