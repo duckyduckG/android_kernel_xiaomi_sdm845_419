@@ -47,6 +47,23 @@
 	qcom,pet-time = <15000>;
 };
 
+&ipa_smmu_ap {
+	qcom,iommu-dma = "bypass";
+};
+
+&ipa_smmu_wlan {
+	qcom,iommu-dma = "bypass";
+};
+
+&ipa_smmu_uc {
+	qcom,iommu-dma = "bypass";
+};
+
+&tspp {
+	/delete-property/ qcom,smmu-s1-enable;
+	qcom,iommu-dma = "bypass";
+};
+
 &ipa_hw {
 	/delete-property/ qcom,smmu-fast-map;
 };
@@ -58,10 +75,15 @@
 			reg = <0x18 4>;
 		};
 	};
+
+	qcom,icnss@18800000 {
+		qcom,iommu-dma = "bypass";
+	};
 };
 
 /* sdm845.dtsi */
 #include "sdm845-gpu.dtsi"
+#include "sdm845-qupv3.dtsi"
 #include "sdm845-670-usb-common.dtsi"
 #include "sdm845-camera.dtsi"
 #include "sdm845-pcie.dtsi"

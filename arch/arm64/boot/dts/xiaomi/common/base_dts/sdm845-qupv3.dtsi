@@ -1,0 +1,7 @@
+&qupv3_0 {
+    qcom,iommu-dma = "bypass";
+};
+
+&qupv3_1 {
+    qcom,iommu-dma = "bypass";
+};
