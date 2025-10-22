@@ -1,3 +1,11 @@
 &qusb_phy0 {
     qcom,tune-efuse-correction = <0x00000000>;	/* you can adjust this from 0xffff,fff9(-7) to 0x0000,0007(+7), 80-P6348-5D*/
 };
+
+&usb0 {
+    qcom,iommu-dma = "bypass";
+};
+
+&usb1 {
+    qcom,iommu-dma = "bypass";
+};
