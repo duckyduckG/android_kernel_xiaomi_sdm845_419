@@ -149,12 +149,12 @@
 	qcom,cam_smmu {
 		compatible = "qcom,msm-cam-smmu";
 		status = "ok";
-		non-fatal-fault-disabled;
 
 		msm_cam_smmu_lrme {
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x1038 0x0>,
 				<&apps_smmu 0x1058 0x0>;
+			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x7400000 0xd8c00000>;
 			label = "lrme";
 			lrme_iova_mem_map: iova-mem-map {
@@ -183,6 +183,7 @@
 				<&apps_smmu 0x810 0x8>,
 				<&apps_smmu 0xc08 0x0>,
 				<&apps_smmu 0xc10 0x8>;
+			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x7400000 0xd8c00000>;
 			label = "ife";
 			ife_iova_mem_map: iova-mem-map {
@@ -210,6 +211,7 @@
 				<&apps_smmu 0x1040 0x8>,
 				<&apps_smmu 0x1030 0x0>,
 				<&apps_smmu 0x1050 0x0>;
+			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x10c00000 0xcf300000>;
 			label = "icp";
 			icp_iova_mem_map: iova-mem-map {
@@ -265,6 +267,7 @@
 		msm_cam_smmu_cpas_cdm {
 			compatible = "qcom,msm-cam-smmu-cb";
 			iommus = <&apps_smmu 0x1000 0x0>;
+			qcom,iommu-faults = "non-fatal";
 			qcom,iommu-dma-addr-pool = <0x7400000 0xd8c00000>;
 			label = "cpas-cdm0";
 			cpas_cdm_iova_mem_map: iova-mem-map {
