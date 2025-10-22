@@ -211,6 +211,7 @@
 				<&apps_smmu 0x1030 0x0>,
 				<&apps_smmu 0x1050 0x0>;
 			qcom,iommu-dma-addr-pool = <0x10c00000 0xcf300000>;
+			qcom,iommu-faults = "non-fatal"; /* temporary */
 			label = "icp";
 			icp_iova_mem_map: iova-mem-map {
 				iova-mem-region-firmware {
