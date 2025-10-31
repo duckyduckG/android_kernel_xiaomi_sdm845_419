@@ -163,7 +163,7 @@
 	qcom,effect-arry = [3e 3e be a0 00 00 00 00
 			3e 3e 3e be be 00 00 00
 			3e 3e 3e 3e be be a0 90];
-	qcom,play-mode = "direct";
+	qcom,play-mode = "buffer";
 	status = "okay";
 };
 
