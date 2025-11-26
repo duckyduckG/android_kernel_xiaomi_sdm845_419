@@ -193,8 +193,6 @@ struct fts_ts_data {
 #endif
 #ifdef CONFIG_DRM
 	struct notifier_block fb_notif;
-#elif defined(CONFIG_HAS_EARLYSUSPEND)
-	struct early_suspend early_suspend;
 #endif
 #ifdef CONFIG_TOUCHSCREEN_FTS_MI_POWER_SUPPLY
 	struct notifier_block power_supply_notifier;
