@@ -1713,6 +1713,13 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 		FTS_ERROR("fts input initialize fail");
 		goto err_input_init;
 	}
+
+	ret = fts_gpio_configure(ts_data);
+	if (ret) {
+		FTS_ERROR("[GPIO]Failed to configure the gpios");
+		goto err_power_init;
+	}
+
 #if FTS_POWER_SOURCE_CUST_EN
 	ret = fts_power_source_init(ts_data);
 	if (ret) {
@@ -1734,11 +1741,6 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 #endif
 #endif
 
-	ret = fts_gpio_configure(ts_data);
-	if (ret) {
-		FTS_ERROR("[GPIO]Failed to configure the gpios");
-		goto err_gpio_config;
-	}
 #if (!FTS_CHIP_IDC)
 	fts_reset_proc(200);
 #endif
@@ -1883,16 +1885,16 @@ err_debugfs_create:
 err_sysfs_create_group:
 	sysfs_remove_group(&client->dev.kobj, &fts_attr_group);
 err_irq_req:
-	if (gpio_is_valid(pdata->reset_gpio))
-		gpio_free(pdata->reset_gpio);
-	if (gpio_is_valid(pdata->irq_gpio))
-		gpio_free(pdata->irq_gpio);
-err_gpio_config:
-#if FTS_POWER_SOURCE_CUST_EN
 #if FTS_PINCTRL_EN
 	fts_pinctrl_select_release(ts_data);
 #endif
 	fts_power_source_ctrl(ts_data, DISABLE);
+
+	if (gpio_is_valid(pdata->reset_gpio))
+		gpio_free(pdata->reset_gpio);
+	if (gpio_is_valid(pdata->irq_gpio))
+		gpio_free(pdata->irq_gpio);
+#if FTS_POWER_SOURCE_CUST_EN
 err_power_ctrl:
 	fts_power_source_release(ts_data);
 err_power_init:
