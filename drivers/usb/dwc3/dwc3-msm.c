@@ -51,7 +51,11 @@ static bool bc12_compliance;
 module_param(bc12_compliance, bool, 0644);
 MODULE_PARM_DESC(bc12_compliance, "Disable sending dp pulse for CDP");
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define SDP_CONNETION_CHECK_TIME 5000 /* in ms */
+#else
 #define SDP_CONNETION_CHECK_TIME 10000 /* in ms */
+#endif
 #define EXTCON_SYNC_EVENT_TIMEOUT_MS 1500 /* in ms */
 
 /* time out to wait for USB cable status notification (in ms)*/
@@ -3346,6 +3350,10 @@ static void check_for_sdp_connection(struct work_struct *w)
 	struct dwc3_msm *mdwc =
 		container_of(w, struct dwc3_msm, sdp_check.work);
 	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	union power_supply_propval pval = {0};
+	int ret;
+#endif
 
 	if (!mdwc->vbus_active)
 		return;
@@ -3361,6 +3369,17 @@ static void check_for_sdp_connection(struct work_struct *w)
 	if (dwc->gadget.state < USB_STATE_DEFAULT &&
 		dwc3_gadget_get_link_state(dwc) != DWC3_LINK_STATE_CMPLY) {
 		mdwc->vbus_active = 0;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		if (!mdwc->usb_psy)
+			mdwc->usb_psy = power_supply_get_by_name("usb");
+		if (mdwc->usb_psy) {
+			pval.intval = 1;
+			ret = power_supply_set_property(mdwc->usb_psy,
+					POWER_SUPPLY_PROP_RERUN_APSD, &pval);
+			if (ret)
+				dev_dbg(mdwc->dev, "error when set property\n");
+		}
+#endif
 		dbg_event(0xFF, "Q RW SPD CHK", mdwc->vbus_active);
 		queue_work(mdwc->dwc3_wq, &mdwc->resume_work);
 	}
@@ -4634,6 +4653,9 @@ static int get_psy_type(struct dwc3_msm *mdwc)
 	return pval.intval;
 }
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define ENUMERATE_MA		500
+#endif
 static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned int mA)
 {
 	union power_supply_propval pval = {0};
@@ -4656,7 +4678,14 @@ static int dwc3_msm_gadget_vbus_draw(struct dwc3_msm *mdwc, unsigned int mA)
 		goto set_prop;
 	}
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (mdwc->max_power == mA
+			|| (psy_type == POWER_SUPPLY_TYPE_USB_CDP)
+			|| ((psy_type != POWER_SUPPLY_TYPE_USB)
+				&& (mA != ENUMERATE_MA)))
+#else
 	if (mdwc->max_power == mA || psy_type != POWER_SUPPLY_TYPE_USB)
+#endif
 		return 0;
 
 	/* Set max current limit in uA */
