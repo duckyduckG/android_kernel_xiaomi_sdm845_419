@@ -59,6 +59,12 @@
 #include "xhci-trace.h"
 #include "xhci-mtk.h"
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+extern void kick_usbpd_vbus_sm(void);
+extern unsigned int connected_usb_idVendor;
+extern int connected_usb_idProduct;
+#endif
+
 /*
  * Returns zero if the TRB isn't in this segment, otherwise it returns the DMA
  * address of the TRB.
@@ -287,6 +293,13 @@ void xhci_ring_cmd_db(struct xhci_hcd *xhci)
 
 static bool xhci_mod_cmd_timer(struct xhci_hcd *xhci)
 {
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int delay;
+
+	if (connected_usb_idVendor == 0x2717 && connected_usb_idProduct == 0x3801)
+		delay = msecs_to_jiffies(1000);
+#endif
+
 	return mod_delayed_work(system_wq, &xhci->cmd_timer,
 			msecs_to_jiffies(xhci->current_cmd->timeout_ms));
 }
@@ -345,6 +358,9 @@ static int xhci_abort_cmd_ring(struct xhci_hcd *xhci, unsigned long flags)
 	union xhci_trb *new_deq		= xhci->cmd_ring->dequeue;
 	u64 crcr;
 	int ret;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int delay;
+#endif
 
 	xhci_dbg(xhci, "Abort command ring\n");
 
@@ -371,6 +387,17 @@ static int xhci_abort_cmd_ring(struct xhci_hcd *xhci, unsigned long flags)
 	 * In the future we should distinguish between -ENODEV and -ETIMEDOUT
 	 * and try to recover a -ETIMEDOUT with a host controller reset.
 	 */
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (connected_usb_idVendor == 0x2717 && connected_usb_idProduct == 0x3801) {
+		delay = 500 * 1000;
+		pr_err("xhci_abort_cmd_ring em headset\n");
+	}
+	else {
+		delay = 5000 * 1000;
+		pr_err("xhci_abort_cmd_ring other\n");
+	}
+#endif
+
 	ret = xhci_handshake_check_state(xhci, &xhci->op_regs->cmd_ring,
 			CMD_RING_RUNNING, 0, 1000 * 1000);
 	if (ret < 0) {
@@ -1376,6 +1403,9 @@ void xhci_handle_command_timeout(struct work_struct *work)
 	struct xhci_hcd *xhci;
 	unsigned long flags;
 	u64 hw_ring_state;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int ret;
+#endif
 
 	xhci = container_of(to_delayed_work(work), struct xhci_hcd, cmd_timer);
 
@@ -1404,7 +1434,18 @@ void xhci_handle_command_timeout(struct work_struct *work)
 		/* Prevent new doorbell, and start command abort */
 		xhci->cmd_ring_state = CMD_RING_STATE_ABORTED;
 		xhci_dbg(xhci, "Command timeout\n");
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		ret = xhci_abort_cmd_ring(xhci, flags);
+		if (ret == -1) {
+			xhci_err(xhci, "Abort command ring failed reset usb device\n");
+			xhci_cleanup_command_queue(xhci);
+			spin_unlock_irqrestore(&xhci->lock, flags);
+			kick_usbpd_vbus_sm();
+			return;
+		}
+#else
 		xhci_abort_cmd_ring(xhci, flags);
+#endif
 		goto time_out_completed;
 	}
 

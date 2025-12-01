@@ -2883,8 +2883,10 @@ static int gsi_bind(struct usb_configuration *c, struct usb_function *f)
 		 * Default to rndis over ethernet which loads NDIS6 drivers
 		 * for windows7/windows10 to avoid data stall issues
 		 */
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 		if (gsi->rndis_id == RNDIS_ID_UNKNOWN)
 			gsi->rndis_id = MISC_RNDIS_OVER_ETHERNET;
+#endif
 
 		switch (gsi->rndis_id) {
 		default:
