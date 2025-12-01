@@ -100,6 +100,13 @@ static void vote_min(struct votable *votable, int client_id,
 	*eff_res = INT_MAX;
 	*eff_id = -EINVAL;
 	for (i = 0; i < votable->num_clients && votable->client_strs[i]; i++) {
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		if (strcmp(votable->name, "FG_WS") != 0) {
+			if (votable->votes[i].enabled)
+				pr_info("%s: val: %d\n", votable->client_strs[i],
+							votable->votes[i].value);
+		}
+#endif
 		if (votable->votes[i].enabled
 			&& *eff_res > votable->votes[i].value) {
 			*eff_res = votable->votes[i].value;
@@ -482,10 +489,19 @@ int vote(struct votable *votable, const char *client_str, bool enabled, int val)
 			|| (effective_result != votable->effective_result)) {
 		votable->effective_client_id = effective_id;
 		votable->effective_result = effective_result;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		if (strcmp(votable->name, "FG_WS") != 0) {
+			pr_info("%s: current vote is now %d voted by %s,%d,previous voted %d\n",
+				votable->name, effective_result,
+				get_client_str(votable, effective_id),
+				effective_id, votable->effective_result);
+		}
+#else
 		pr_debug("%s: effective vote is now %d voted by %s,%d\n",
 			votable->name, effective_result,
 			get_client_str(votable, effective_id),
 			effective_id);
+#endif
 		if (votable->callback && !votable->force_active
 				&& (votable->override_result == -EINVAL))
 			rc = votable->callback(votable, votable->data,
