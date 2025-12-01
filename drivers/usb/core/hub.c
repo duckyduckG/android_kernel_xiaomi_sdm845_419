@@ -131,6 +131,12 @@ static int hub_port_disable(struct usb_hub *hub, int port1, int set_state);
 static bool hub_port_warm_reset_required(struct usb_hub *hub, int port1,
 		u16 portstatus);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+unsigned int connected_usb_idVendor;
+unsigned int connected_usb_idProduct;
+unsigned int connected_usb_devnum = 0xff;
+#endif
+
 static inline char *portspeed(struct usb_hub *hub, int portstatus)
 {
 	if (hub_is_superspeedplus(hub->hdev))
@@ -2240,6 +2246,16 @@ void usb_disconnect(struct usb_device **pdev)
 	dev_info(&udev->dev, "USB disconnect, device number %d\n",
 			udev->devnum);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (connected_usb_devnum == udev->devnum)
+	{
+		dev_info(&udev->dev, "xiaomi headset removed, devnum %d\n", udev->devnum);
+		connected_usb_idVendor = 0;
+		connected_usb_idProduct = 0;
+		connected_usb_devnum = 0xff;
+	}
+#endif
+
 	/*
 	 * Ensure that the pm runtime code knows that the USB device
 	 * is in the process of being disconnected.
@@ -2577,6 +2593,17 @@ int usb_new_device(struct usb_device *udev)
 	/* export the usbdev device-node for libusb */
 	udev->dev.devt = MKDEV(USB_DEVICE_MAJOR,
 			(((udev->bus->busnum-1) * 128) + (udev->devnum-1)));
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if ((0x2717 == le16_to_cpu(udev->descriptor.idVendor))
+			&&(0x3801 == le16_to_cpu(udev->descriptor.idProduct)))
+	{
+		connected_usb_idVendor = le16_to_cpu(udev->descriptor.idVendor);
+		connected_usb_idProduct = le16_to_cpu(udev->descriptor.idProduct);
+		connected_usb_devnum = udev->devnum;
+		dev_info(&udev->dev, "xiaomi headset identified, devnum %d\n", udev->devnum);
+	}
+#endif
 
 	/* Tell the world! */
 	announce_device(udev);
@@ -4592,6 +4619,7 @@ static int hub_set_address(struct usb_device *udev, int devnum)
 	return retval;
 }
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845) /*disable USB 2.0 Link PM to fix long time usb storage recognition issue*/
 /*
  * There are reports of USB 3.0 devices that say they support USB 2.0 Link PM
  * when they're plugged into a USB 2.0 port, but they don't work when LPM is
@@ -4618,6 +4646,7 @@ static void hub_set_initial_usb2_lpm_policy(struct usb_device *udev)
 		usb_enable_usb2_hardware_lpm(udev);
 	}
 }
+#endif
 
 static int hub_enable_device(struct usb_device *udev)
 {
@@ -4979,7 +5008,9 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 	/* notify HCD that we have a device connected and addressed */
 	if (hcd->driver->update_device)
 		hcd->driver->update_device(hcd, udev);
+#if !defined(CONFIG_MACH_XIAOMI_SDM845) /*disable USB 2.0 Link PM to fix long time usb storage recognition issue*/
 	hub_set_initial_usb2_lpm_policy(udev);
+#endif
 fail:
 	if (retval) {
 		hub_port_disable(hub, port1, 0);
