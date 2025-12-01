@@ -218,6 +218,20 @@ static ssize_t power_supply_show_property(struct device *dev,
 	case POWER_SUPPLY_PROP_MODEL_NAME ... POWER_SUPPLY_PROP_SERIAL_NUMBER:
 		ret = sprintf(buf, "%s\n", value.strval);
 		break;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	case POWER_SUPPLY_PROP_WIRELESS_VERSION:
+		ret = sprintf(buf, "0x%x\n", value.intval);
+		break;
+	case POWER_SUPPLY_PROP_WIRELESS_WAKELOCK:
+		ret = sprintf(buf, "%d\n", value.intval);
+		break;
+	case POWER_SUPPLY_PROP_SIGNAL_STRENGTH:
+		ret = sprintf(buf, "%d\n", value.intval);
+		break;
+	case POWER_SUPPLY_PROP_TYPE_RECHECK:
+		ret = sprintf(buf, "0x%x\n", value.intval);
+		break;
+#endif
 	default:
 		ret = sprintf(buf, "%d\n", value.intval);
 	}
@@ -352,6 +366,11 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(charge_enabled),
 	POWER_SUPPLY_ATTR(set_ship_mode),
 	POWER_SUPPLY_ATTR(real_type),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	POWER_SUPPLY_ATTR(hvdcp3_type),
+	POWER_SUPPLY_ATTR(quick_charge_type),
+	POWER_SUPPLY_ATTR(dc_adapter),
+#endif
 	POWER_SUPPLY_ATTR(charge_now_raw),
 	POWER_SUPPLY_ATTR(charge_now_error),
 	POWER_SUPPLY_ATTR(capacity_raw),
@@ -376,6 +395,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(temp_hot),
 	POWER_SUPPLY_ATTR(system_temp_level),
 	POWER_SUPPLY_ATTR(resistance),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	POWER_SUPPLY_ATTR(esr),
+#endif
 	POWER_SUPPLY_ATTR(resistance_capacitive),
 	POWER_SUPPLY_ATTR(resistance_id),
 	POWER_SUPPLY_ATTR(resistance_now),
@@ -396,6 +418,9 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(current_qnovo),
 	POWER_SUPPLY_ATTR(voltage_qnovo),
 	POWER_SUPPLY_ATTR(rerun_aicl),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	POWER_SUPPLY_ATTR(charger_type),
+#endif
 	POWER_SUPPLY_ATTR(cycle_count_id),
 	POWER_SUPPLY_ATTR(safety_timer_expired),
 	POWER_SUPPLY_ATTR(restricted_charging),
@@ -426,11 +451,25 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cc_step),
 	POWER_SUPPLY_ATTR(cc_step_sel),
 	POWER_SUPPLY_ATTR(sw_jeita_enabled),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	POWER_SUPPLY_ATTR(dynamic_fv_enabled),
+#endif
 	POWER_SUPPLY_ATTR(pd_voltage_max),
 	POWER_SUPPLY_ATTR(pd_voltage_min),
 	POWER_SUPPLY_ATTR(sdp_current_max),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	POWER_SUPPLY_ATTR(dc_thermal_levels),
+#endif
 	POWER_SUPPLY_ATTR(fg_reset_clock),
 	POWER_SUPPLY_ATTR(connector_type),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	POWER_SUPPLY_ATTR(rerun_apsd),
+	POWER_SUPPLY_ATTR(type_recheck),
+	POWER_SUPPLY_ATTR(wireless_version),
+	POWER_SUPPLY_ATTR(signal_strength),
+	POWER_SUPPLY_ATTR(wireless_wakelock),
+	POWER_SUPPLY_ATTR(tx_adapter),
+#endif
 	POWER_SUPPLY_ATTR(parallel_batfet_mode),
 	POWER_SUPPLY_ATTR(parallel_fcc_max),
 	POWER_SUPPLY_ATTR(min_icl),
