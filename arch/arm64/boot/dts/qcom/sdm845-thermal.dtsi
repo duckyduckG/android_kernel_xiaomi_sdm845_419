@@ -5,7 +5,7 @@
 
 #include <dt-bindings/thermal/thermal.h>
 
-&clock_cpucc {
+&cpufreq_hw {
 	qcom,cpu-isolation {
 		compatible = "qcom,cpu-isolate";
 		cpu0_isolate: cpu0-isolate {
