@@ -85,11 +85,21 @@
 
 #define FULL_CAPACITY			100
 #define FULL_SOC_RAW			255
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define FULL_SOC_REPORT_THR		250
+#endif
 
 #define DEBUG_BATT_SOC			67
 #define BATT_MISS_SOC			50
 #define ESR_SOH_SOC			50
 #define EMPTY_SOC			0
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define VBAT_RESTART_FG_EMPTY_UV		3700000
+#define TEMP_THR_RESTART_FG		150
+#define RESTART_FG_START_WORK_MS		1000
+#define RESTART_FG_WORK_MS		2000
+#endif
 
 enum prof_load_status {
 	PROFILE_MISSING,
@@ -320,6 +330,14 @@ enum fg_ttf_mode {
 	FG_TTF_MODE_QNOVO,
 };
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+struct optimize_sram_data {
+	int addr;
+	int offset;
+	int val;
+};
+#endif
+
 /* parameters from battery profile */
 struct fg_batt_props {
 	const char	*batt_type_str;
@@ -327,6 +345,9 @@ struct fg_batt_props {
 	int		float_volt_uv;
 	int		vbatt_full_mv;
 	int		fastchg_curr_ma;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int		nom_cap_uah;
+#endif
 	int		*therm_coeffs;
 	int		therm_ctr_offset;
 	int		therm_pull_up_kohms;
@@ -340,6 +361,9 @@ struct fg_cyc_ctr_data {
 	u16		count[BUCKET_COUNT];
 	u8		last_soc[BUCKET_COUNT];
 	char		counter[BUCKET_COUNT * 8];
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int		id;
+#endif
 	struct mutex	lock;
 };
 
@@ -422,6 +446,24 @@ struct fg_memif {
 	u8			num_bytes_per_word;
 };
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#define BATT_MA_AVG_SAMPLES		8
+struct batt_params {
+	bool	update_now;
+	int		batt_raw_soc;
+	int		batt_soc;
+	int		samples_num;
+	int		samples_index;
+	int		batt_ma_avg_samples[BATT_MA_AVG_SAMPLES];
+	int		batt_ma_avg;
+	int		batt_ma_prev;
+	int		batt_ma;
+	int		batt_mv;
+	int		batt_temp;
+	struct timespec		last_soc_change_time;
+};
+#endif
+
 struct fg_dev {
 	struct thermal_zone_device	*tz_dev;
 	struct device		*dev;
@@ -484,19 +526,38 @@ struct fg_dev {
 	bool			use_ima_single_mode;
 	bool			usb_present;
 	bool			twm_state;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	bool			report_full;
+#endif
 	bool			use_dma;
 	bool			qnovo_enable;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	bool			empty_restart_fg;
+#endif
 	enum fg_version		version;
 	bool			suspended;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct batt_params	param;
+	struct delayed_work	soc_monitor_work;
+#endif
 	struct completion	soc_update;
 	struct completion	soc_ready;
 	struct delayed_work	profile_load_work;
 	struct work_struct	status_change_work;
 	struct work_struct	esr_sw_work;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct delayed_work	esr_timer_config_work;
+#endif
 	struct delayed_work	sram_dump_work;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct delayed_work	soc_work;
+#endif
 	struct work_struct	esr_filter_work;
 	struct alarm		esr_filter_alarm;
 	ktime_t			last_delta_temp_time;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct delayed_work	empty_restart_fg_work;
+#endif
 };
 
 /* Debugfs data structures are below */
