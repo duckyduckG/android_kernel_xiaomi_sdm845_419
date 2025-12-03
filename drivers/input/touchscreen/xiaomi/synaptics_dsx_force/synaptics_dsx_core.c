@@ -5749,7 +5749,7 @@ static int synaptics_rmi4_drm_notifier_cb(struct notifier_block *self,
 		return 0;
 
 	/* Receive notifications from primary panel only */
-	if (evdata && evdata->data && rmi4_data && evdata->is_primary) {
+	if (evdata && evdata->data && rmi4_data) {
 		if (event == DRM_EVENT_BLANK) {
 			transition = evdata->data;
 			if (*transition == DRM_BLANK_POWERDOWN) {
