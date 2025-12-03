@@ -30,6 +30,10 @@
 #include "codecs/wcd934x/wcd934x.h"
 #include "codecs/wcd934x/wcd934x-mbhc.h"
 #include "codecs/wsa881x.h"
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+#include <linux/regulator/consumer.h>
+#include <soc/qcom/socinfo.h>
+#endif
 
 #define DRV_NAME "sdm845-asoc-snd"
 
@@ -172,8 +176,15 @@ struct msm_asoc_mach_data {
 	struct pinctrl *usbc_en2_gpio_p; /* used by pinctrl API */
 	struct device_node *hph_en1_gpio_p; /* used by pinctrl API */
 	struct device_node *hph_en0_gpio_p; /* used by pinctrl API */
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct device_node *adc2_sel_gpio_p; /* used by pinctrl API */
+#endif
 	struct snd_info_entry *codec_root;
 	struct msm_pinctrl_info pinctrl_info;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	struct regulator *us_p_power;
+	struct regulator *us_n_power;
+#endif
 	struct snd_soc_component *component;
 	bool is_afe_config_done;
 };
@@ -387,7 +398,11 @@ static struct tdm_dev_config tdm_cfg[TDM_INTERFACE_MAX * 2]
 /* Default configuration of slimbus channels */
 static struct dev_config slim_rx_cfg[] = {
 	[SLIM_RX_0] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	[SLIM_RX_1] = {SAMPLING_RATE_96KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+#else
 	[SLIM_RX_1] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+#endif
 	[SLIM_RX_2] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 	[SLIM_RX_3] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 	[SLIM_RX_4] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
@@ -398,7 +413,11 @@ static struct dev_config slim_rx_cfg[] = {
 
 static struct dev_config slim_tx_cfg[] = {
 	[SLIM_TX_0] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	[SLIM_TX_1] = {SAMPLING_RATE_96KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+#else
 	[SLIM_TX_1] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
+#endif
 	[SLIM_TX_2] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 	[SLIM_TX_3] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
 	[SLIM_TX_4] = {SAMPLING_RATE_48KHZ, SNDRV_PCM_FORMAT_S16_LE, 1},
@@ -517,11 +536,17 @@ static const char *const mi2s_ch_text[] = {"One", "Two", "Three", "Four",
 static const char *const hifi_text[] = {"Off", "On"};
 static const char *const qos_text[] = {"Disable", "Enable"};
 static const char *const afe_loopback_tx_ch_text[] = {"One", "Two"};
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static const char *const ultrasound_power_text[] = {"Off", "On"};
+#endif
 
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_2_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_tx_chs, slim_tx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_1_tx_chs, slim_tx_ch_text);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static SOC_ENUM_SINGLE_EXT_DECL(slim_3_tx_chs, slim_tx_ch_text);
+#endif
 static SOC_ENUM_SINGLE_EXT_DECL(slim_5_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_6_rx_chs, slim_rx_ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(usb_rx_chs, usb_ch_text);
@@ -532,6 +557,9 @@ static SOC_ENUM_SINGLE_EXT_DECL(proxy_rx_chs, ch_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_rx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_5_rx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_6_rx_format, bit_format_text);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static SOC_ENUM_SINGLE_EXT_DECL(slim_3_tx_format, bit_format_text);
+#endif
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_tx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(usb_rx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(usb_tx_format, bit_format_text);
@@ -539,6 +567,9 @@ static SOC_ENUM_SINGLE_EXT_DECL(ext_disp_rx_format, ext_disp_bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_rx_sample_rate, slim_sample_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_2_rx_sample_rate, slim_sample_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_0_tx_sample_rate, slim_sample_rate_text);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static SOC_ENUM_SINGLE_EXT_DECL(slim_3_tx_sample_rate, slim_sample_rate_text);
+#endif
 static SOC_ENUM_SINGLE_EXT_DECL(slim_5_rx_sample_rate, slim_sample_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(slim_6_rx_sample_rate, slim_sample_rate_text);
 static SOC_ENUM_SINGLE_EXT_DECL(bt_sample_rate, bt_sample_rate_text);
@@ -585,6 +616,9 @@ static SOC_ENUM_SINGLE_EXT_DECL(aux_pcm_tx_format, bit_format_text);
 static SOC_ENUM_SINGLE_EXT_DECL(hifi_function, hifi_text);
 static SOC_ENUM_SINGLE_EXT_DECL(qos_vote, qos_text);
 static SOC_ENUM_SINGLE_EXT_DECL(afe_loopback_tx_chs, afe_loopback_tx_ch_text);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static SOC_ENUM_SINGLE_EXT_DECL(ultrasound_power, ultrasound_power_text);
+#endif
 
 static int msm_hifi_control;
 static int qos_vote_status;
@@ -592,6 +626,9 @@ static bool codec_reg_done;
 static struct snd_soc_aux_dev *msm_aux_dev;
 static struct snd_soc_codec_conf *msm_codec_conf;
 static struct msm_asoc_wcd93xx_codec msm_codec_fn;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static int ultrasound_power_state;
+#endif
 
 static void *def_tavil_mbhc_cal(void);
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_component *component,
@@ -610,9 +647,15 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = true,
 	.key_code[0] = KEY_MEDIA,
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	.key_code[1] = BTN_1,
+	.key_code[2] = BTN_2,
+	.key_code[3] = 0,
+#else
 	.key_code[1] = KEY_VOICECOMMAND,
 	.key_code[2] = KEY_VOLUMEUP,
 	.key_code[3] = KEY_VOLUMEDOWN,
+#endif
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
@@ -820,6 +863,10 @@ static int slim_get_port_idx(struct snd_kcontrol *kcontrol)
 		port_id = SLIM_TX_0;
 	else if (strnstr(kcontrol->id.name, "SLIM_1_TX", sizeof("SLIM_1_TX")))
 		port_id = SLIM_TX_1;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	else if (strnstr(kcontrol->id.name, "SLIM_3_TX", sizeof("SLIM_3_TX")))
+		port_id = SLIM_TX_3;
+#endif
 	else {
 		pr_err("%s: unsupported channel: %s",
 			__func__, kcontrol->id.name);
@@ -2968,6 +3015,67 @@ static int msm_qos_ctl_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static int ultrasound_power_get(struct snd_kcontrol *kcontrol,
+                               struct snd_ctl_elem_value *ucontrol)
+{
+       ucontrol->value.integer.value[0] = ultrasound_power_state;
+       return 0;
+}
+
+static int ultrasound_power_put(struct snd_kcontrol *kcontrol,
+                               struct snd_ctl_elem_value *ucontrol)
+{
+       struct snd_soc_component *component = snd_soc_kcontrol_component(kcontrol);
+       struct snd_soc_card *card = component->card;
+       struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+       int ret;
+
+       ultrasound_power_state = ucontrol->value.integer.value[0];
+       pr_debug("%s: ultrasound power %d\n", __func__, ultrasound_power_state);
+
+       if (ultrasound_power_state == 1) {
+               if (pdata->us_p_power)
+                       ret = regulator_enable(pdata->us_p_power);
+               if (pdata->us_n_power)
+                       ret = regulator_enable(pdata->us_n_power);
+       } else {
+               if (pdata->us_p_power)
+                       ret = regulator_disable(pdata->us_p_power);
+               if (pdata->us_n_power)
+                       ret = regulator_disable(pdata->us_n_power);
+       }
+
+       return 0;
+}
+
+static int usbhs_direction_get(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component  = NULL;
+	struct snd_soc_card *card = NULL;
+	struct msm_asoc_mach_data *pdata = NULL;
+
+	ucontrol->value.integer.value[0] = 0;
+
+	component = snd_soc_kcontrol_component(kcontrol);
+	if (component) {
+		card = component->card;
+		if (card) {
+			pdata = snd_soc_card_get_drvdata(card);
+			if (pdata){
+				if (pdata->usbc_en2_gpio_p) {
+					ucontrol->value.integer.value[0] = gpio_get_value_cansleep(pdata->usbc_en2_gpio);
+				} else if (pdata->usbc_en2_gpio > 0) {
+					ucontrol->value.integer.value[0] = gpio_get_value_cansleep(pdata->usbc_en2_gpio);
+				}
+			}
+		}
+	}
+	return 0;
+}
+#endif
+
 static const struct snd_kcontrol_new msm_snd_controls[] = {
 	SOC_ENUM_EXT("SLIM_0_RX Channels", slim_0_rx_chs,
 			msm_slim_rx_ch_get, msm_slim_rx_ch_put),
@@ -3214,11 +3322,24 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_hifi_put),
 	SOC_ENUM_EXT("MultiMedia5_RX QOS Vote", qos_vote, msm_qos_ctl_get,
 			msm_qos_ctl_put),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	SOC_ENUM_EXT("Ultrasound Power", ultrasound_power,
+			ultrasound_power_get, ultrasound_power_put),
+	SOC_SINGLE_EXT("USB Headset Direction", 0, 0, UINT_MAX, 0,
+					usbhs_direction_get, NULL),
+#endif
 	SOC_SINGLE_MULTI_EXT("TDM Slot Map", SND_SOC_NOPM, 0, 255, 0, 4,
 	NULL, tdm_slot_map_put),
 	SOC_ENUM_EXT("AFE_LOOPBACK_TX Channels", afe_loopback_tx_chs,
 			afe_loopback_tx_ch_get, afe_loopback_tx_ch_put),
-
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	SOC_ENUM_EXT("SLIM_3_TX Channels", slim_3_tx_chs,
+			msm_slim_tx_ch_get, msm_slim_tx_ch_put),
+	SOC_ENUM_EXT("SLIM_3_TX Format", slim_3_tx_format,
+			slim_tx_bit_format_get, slim_tx_bit_format_put),
+	SOC_ENUM_EXT("SLIM_3_TX SampleRate", slim_3_tx_sample_rate,
+			slim_tx_sample_rate_get, slim_tx_sample_rate_put),
+#endif
 };
 
 static int msm_snd_enable_codec_ext_clk(struct snd_soc_component *component,
@@ -3320,6 +3441,60 @@ static int msm_hifi_ctrl_event(struct snd_soc_dapm_widget *w,
 	return 0;
 }
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+/*
+static int external_amic2_sel_get(struct snd_kcontrol *kcontrol,
+                               struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = amic2_sel_state;
+	return 0;
+}
+*/
+
+static void external_enable_dual_adc_gpio(struct device_node *np, bool val)
+{
+	if (!np)
+		return;
+
+	if (val == 1) {
+		msm_cdc_pinctrl_select_active_state(np);
+		pr_info("%s: enable Dual ADC \n", __func__);
+	} else {
+		msm_cdc_pinctrl_select_sleep_state(np);
+		pr_info("%s: disable Dual ADC \n", __func__);
+	}
+}
+
+static int external_amic2_sel_put(struct snd_kcontrol *kcontrol,
+                               struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_context *dapm = snd_soc_dapm_kcontrol_dapm(kcontrol);
+	struct snd_soc_card *card = dapm->card;
+	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
+	unsigned int val;
+
+	val = ucontrol->value.enumerated.item[0];
+
+	if (!pdata || !pdata->adc2_sel_gpio_p) {
+		pr_err("%s: adc2_sel_gpio is invalid\n", __func__);
+		return -EINVAL;
+	}
+
+	//external_enable_dual_adc_gpio(pdata->adc2_sel_gpio_p, !!(val));
+	pr_info("external_amic2_sel_put %u \n", val);
+
+	return snd_soc_dapm_put_enum_double(kcontrol, ucontrol);
+}
+
+static const char *const external_AMIC2_enum_text[] = {"default", "Dual_ADC"};
+
+static SOC_ENUM_SINGLE_VIRT_DECL(external_AMIC2_enum, external_AMIC2_enum_text);
+
+static const struct snd_kcontrol_new ext_amc2_mux =
+	SOC_DAPM_ENUM_EXT("External AMIC2 sel", external_AMIC2_enum,
+			snd_soc_dapm_get_enum_double, external_amic2_sel_put);
+#endif
+
 static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 
 	SND_SOC_DAPM_SUPPLY("MCLK",  SND_SOC_NOPM, 0, 0,
@@ -3344,7 +3519,24 @@ static const struct snd_soc_dapm_widget msm_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Digital Mic3", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic4", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic5", NULL),
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	SND_SOC_DAPM_MIC("Headset Mic2", NULL),
+#endif
 };
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static const struct snd_soc_dapm_widget sdm845_polaris_dapm_widgets[] = {
+	SND_SOC_DAPM_MUX("External AMIC2 Mux", SND_SOC_NOPM, 0, 0, &ext_amc2_mux),
+	SND_SOC_DAPM_INPUT("AMIC2_EXT_0"),
+	SND_SOC_DAPM_INPUT("AMIC2_EXT_1"),
+};
+
+static const struct snd_soc_dapm_route sdm845_polaris_dapm_routes[] = {
+	{"AMIC2", NULL, "External AMIC2 Mux"},
+	{"External AMIC2 Mux", "default", "AMIC2_EXT_0"},
+	{"External AMIC2 Mux", "Dual_ADC", "AMIC2_EXT_1"},
+};
+#endif
 
 static inline int param_is_mask(int p)
 {
@@ -3787,6 +3979,9 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_component *component, bool acti
 	struct msm_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
 	struct pinctrl_state *en2_pinctrl_active;
 	struct pinctrl_state *en2_pinctrl_sleep;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	int oldv;
+#endif
 
 	if (!pdata->usbc_en2_gpio_p) {
 		if (active) {
@@ -3837,6 +4032,9 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_component *component, bool acti
 	/* if active and usbc_en2_gpio_p defined, swap using usbc_en2_gpio_p */
 	if (active) {
 		dev_dbg(component->dev, "%s: enter\n", __func__);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		oldv = tavil_mb_pull_down(component, true, 0);
+#endif
 		if (pdata->usbc_en2_gpio_p) {
 			value = gpio_get_value_cansleep(pdata->usbc_en2_gpio);
 			if (value)
@@ -3849,7 +4047,12 @@ static bool msm_usbc_swap_gnd_mic(struct snd_soc_component *component, bool acti
 			value = gpio_get_value_cansleep(pdata->usbc_en2_gpio);
 			gpio_set_value_cansleep(pdata->usbc_en2_gpio, !value);
 		}
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		tavil_mb_pull_down(component, false, oldv);
+		pr_info("%s: swap select switch %d to %d\n", __func__,
+#else
 		pr_debug("%s: swap select switch %d to %d\n", __func__,
+#endif
 			value, !value);
 		ret = true;
 	} else {
@@ -4006,7 +4209,28 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_add_routes(dapm, wcd_audio_paths,
 				ARRAY_SIZE(wcd_audio_paths));
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_URSA ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_EQUULEUS ||
+		get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS) {
+		pr_info("add the External AMIC2 Mux\n");
+		snd_soc_dapm_new_controls(dapm, sdm845_polaris_dapm_widgets,
+				ARRAY_SIZE(sdm845_polaris_dapm_widgets));
+
+		snd_soc_dapm_add_routes(dapm, sdm845_polaris_dapm_routes,
+				ARRAY_SIZE(sdm845_polaris_dapm_routes));
+	}
+#endif
+
 	snd_soc_dapm_ignore_suspend(dapm, "Handset Mic");
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	snd_soc_dapm_ignore_suspend(dapm, "AMIC2");
+	snd_soc_dapm_ignore_suspend(dapm, "AMIC2_EXT_0");
+	snd_soc_dapm_ignore_suspend(dapm, "AMIC2_EXT_1");
+	snd_soc_dapm_ignore_suspend(dapm, "Headset Mic2");
+#endif
 	snd_soc_dapm_ignore_suspend(dapm, "Headset Mic");
 	snd_soc_dapm_ignore_suspend(dapm, "ANCRight Headset Mic");
 	snd_soc_dapm_ignore_suspend(dapm, "ANCLeft Headset Mic");
@@ -4131,6 +4355,15 @@ static void *def_tavil_mbhc_cal(void)
 		(sizeof(btn_cfg->_v_btn_low[0]) * btn_cfg->num_btn);
 
 	btn_high[0] = 75;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	btn_high[1] = 260;
+	btn_high[2] = 750;
+	btn_high[3] = 750;
+	btn_high[4] = 750;
+	btn_high[5] = 750;
+	btn_high[6] = 750;
+	btn_high[7] = 750;
+#else
 	btn_high[1] = 150;
 	btn_high[2] = 237;
 	btn_high[3] = 500;
@@ -4138,6 +4371,7 @@ static void *def_tavil_mbhc_cal(void)
 	btn_high[5] = 500;
 	btn_high[6] = 500;
 	btn_high[7] = 500;
+#endif
 
 	return tavil_wcd_cal;
 }
@@ -4205,6 +4439,10 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 		/* For <codec>_tx3 case */
 		else if (dai_link->id == MSM_BACKEND_DAI_SLIMBUS_1_TX)
 			user_set_tx_ch = slim_tx_cfg[1].channels;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		else if (dai_link->id == MSM_BACKEND_DAI_SLIMBUS_3_TX)
+			user_set_tx_ch = slim_tx_cfg[3].channels;
+#endif
 		else if (dai_link->id == MSM_BACKEND_DAI_SLIMBUS_4_TX)
 			user_set_tx_ch = msm_vi_feed_tx_ch;
 		else
@@ -5508,6 +5746,38 @@ static struct snd_soc_dai_link msm_common_dai_links[] = {
 		.codec_dai_name = "snd-soc-dummy-dai",
 		.codec_name = "snd-soc-dummy",
 	},
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+    {
+		.name = "Quaternary MI2S_RX Hostless Playback",
+		.stream_name = "Quaternary MI2S_RX Hostless Playback",
+		.cpu_dai_name = "QUAT_MI2S_RX_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+	{
+		.name = "Quaternary MI2S_TX Hostless Capture",
+		.stream_name = "Quaternary MI2S_TX Hostless Capture",
+		.cpu_dai_name = "QUAT_MI2S_TX_HOSTLESS",
+		.platform_name = "msm-pcm-hostless",
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
+			SND_SOC_DPCM_TRIGGER_POST},
+		.no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+#endif
 };
 
 static struct snd_soc_dai_link msm_tavil_fe_dai_links[] = {
@@ -5942,7 +6212,11 @@ static struct snd_soc_dai_link msm_tavil_be_dai_links[] = {
 		.cpu_dai_name = "msm-dai-q6-dev.16386",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tavil_codec",
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		.codec_dai_name = "tavil_rx2",
+#else
 		.codec_dai_name = "tavil_rx1",
+#endif
 		.dynamic_be = 1,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
@@ -5959,7 +6233,11 @@ static struct snd_soc_dai_link msm_tavil_be_dai_links[] = {
 		.cpu_dai_name = "msm-dai-q6-dev.16387",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tavil_codec",
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		.codec_dai_name = "tavil_tx2",
+#else
 		.codec_dai_name = "tavil_tx3",
+#endif
 		.dynamic_be = 1,
 		.no_pcm = 1,
 		.dpcm_capture = 1,
@@ -6007,7 +6285,11 @@ static struct snd_soc_dai_link msm_tavil_be_dai_links[] = {
 		.cpu_dai_name = "msm-dai-q6-dev.16391",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tavil_codec",
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+		.codec_dai_name = "tavil_tx3",
+#else
 		.codec_dai_name = "tavil_tx1",
+#endif
 		.dynamic_be = 1,
 		.no_pcm = 1,
 		.dpcm_capture = 1,
@@ -6269,6 +6551,7 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.ops = &msm_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	{
 		.name = LPASS_BE_QUAT_MI2S_RX,
 		.stream_name = "Quaternary MI2S Playback",
@@ -6285,6 +6568,7 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 	},
+#endif
 	{
 		.name = LPASS_BE_QUAT_MI2S_TX,
 		.stream_name = "Quaternary MI2S Capture",
@@ -6438,6 +6722,47 @@ static struct snd_soc_dai_link msm_afe_rxtx_lb_be_dai_link[] = {
 	},
 };
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static struct snd_soc_dai_link msm_quat_mi2s_tas2559_dai_links[] = {
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tas2559.2-004c",
+		.codec_dai_name = "tas2559 ASI1",
+		.dynamic_be = 1,
+		.no_pcm = 1,
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS,
+		.dpcm_playback = 1,
+		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm_mi2s_be_ops,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+};
+
+static struct snd_soc_dai_link msm_quat_mi2s_tas2557_dai_links[] = {
+	{
+		.name = LPASS_BE_QUAT_MI2S_RX,
+		.stream_name = "Quaternary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.3",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "tas2557.2-004c",
+		.codec_dai_name = "tas2557 ASI1",
+		.dynamic_be = 1,
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_hw_params_fixup,
+		.ops = &msm_mi2s_be_ops,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+	},
+};
+#endif
+
 static struct snd_soc_dai_link msm_tavil_snd_card_dai_links[
 			 ARRAY_SIZE(msm_common_dai_links) +
 			 ARRAY_SIZE(msm_tavil_fe_dai_links) +
@@ -6448,7 +6773,13 @@ static struct snd_soc_dai_link msm_tavil_snd_card_dai_links[
 			 ARRAY_SIZE(ext_disp_be_dai_link) +
 			 ARRAY_SIZE(msm_mi2s_be_dai_links) +
 			 ARRAY_SIZE(msm_auxpcm_be_dai_links) +
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+			 ARRAY_SIZE(msm_afe_rxtx_lb_be_dai_link) +
+			 ARRAY_SIZE(msm_quat_mi2s_tas2559_dai_links) +
+			 ARRAY_SIZE(msm_quat_mi2s_tas2557_dai_links)];
+#else
 			 ARRAY_SIZE(msm_afe_rxtx_lb_be_dai_link)];
+#endif
 
 static int msm_snd_card_tavil_late_probe(struct snd_soc_card *card)
 {
@@ -6808,6 +7139,24 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			       msm_mi2s_be_dai_links,
 			       sizeof(msm_mi2s_be_dai_links));
 			total_links += ARRAY_SIZE(msm_mi2s_be_dai_links);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+			if ((get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) ||
+				(get_hw_version_platform() == HARDWARE_PLATFORM_URSA) ||
+				(get_hw_version_platform() == HARDWARE_PLATFORM_EQUULEUS) ||
+				(get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS)) {
+				memcpy(msm_tavil_snd_card_dai_links + total_links,
+						msm_quat_mi2s_tas2557_dai_links,
+						sizeof(msm_quat_mi2s_tas2557_dai_links));
+				total_links += ARRAY_SIZE(msm_quat_mi2s_tas2557_dai_links);
+			} else if ((get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) ||
+			(get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM)) {
+				memcpy(msm_tavil_snd_card_dai_links + total_links,
+						msm_quat_mi2s_tas2559_dai_links,
+						sizeof(msm_quat_mi2s_tas2559_dai_links));
+				total_links += ARRAY_SIZE(msm_quat_mi2s_tas2559_dai_links);
+			}
+#endif
 		}
 		if (of_property_read_bool(dev->of_node,
 					  "qcom,auxpcm-audio-intf")) {
@@ -7264,6 +7613,27 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, card);
 	snd_soc_card_set_drvdata(card, pdata);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	pdata->adc2_sel_gpio_p = of_parse_phandle(pdev->dev.of_node,
+			"qcom,adc2-switch-gpio", 0);
+	if (!pdata->adc2_sel_gpio_p) {
+		dev_err(&pdev->dev, "property %s not detected in node %s",
+				"qcom,adc2-switch-gpio",
+				pdev->dev.of_node->full_name);
+	}
+	wcd_mbhc_cfg.dual_adc_gpio_node = pdata->adc2_sel_gpio_p;
+	wcd_mbhc_cfg.enable_dual_adc_gpio = external_enable_dual_adc_gpio;
+	pr_info("pdata->adc2_sel_gpio_p = %lx\n", (unsigned long)pdata->adc2_sel_gpio_p);
+
+	pdata->usbc_en2_gpio = of_get_named_gpio(card->dev->of_node,
+				    "qcom,usbc-analog-en2-gpio", 0);
+	if (!gpio_is_valid(pdata->usbc_en2_gpio)) {
+		dev_err(card->dev, "%s, property %s not in node %s",
+			__func__, "qcom,usbc-analog-en2-gpio",
+			card->dev->of_node->full_name);
+	}
+#endif
+
 	ret = snd_soc_of_parse_card_name(card, "qcom,model");
 	if (ret) {
 		dev_err(&pdev->dev, "parse card name failed, err:%d\n",
@@ -7375,6 +7745,32 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	 * entry is not found in DT file as some targets do not support
 	 * US-Euro detection
 	 */
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (!of_property_read_bool(pdev->dev.of_node, "qcom,euro-us-hw-auto-switch")) {
+		pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
+					"qcom,us-euro-gpios", 0);
+		if (!gpio_is_valid(pdata->us_euro_gpio))
+			pdata->us_euro_gpio_p = of_parse_phandle(pdev->dev.of_node,
+						"qcom,us-euro-gpios", 0);
+		if (!gpio_is_valid(pdata->us_euro_gpio) && (!pdata->us_euro_gpio_p)) {
+			dev_dbg(&pdev->dev, "property %s not detected in node %s",
+				"qcom,us-euro-gpios", pdev->dev.of_node->full_name);
+		} else {
+			dev_dbg(&pdev->dev, "%s detected",
+				"qcom,us-euro-gpios");
+			wcd_mbhc_cfg.swap_gnd_mic = msm_swap_gnd_mic;
+		}
+
+		if (of_find_property(pdev->dev.of_node, usb_c_dt, NULL))
+			wcd_mbhc_cfg.swap_gnd_mic = msm_swap_gnd_mic;
+
+		ret = msm_prepare_us_euro(card);
+		if (ret)
+			dev_err(&pdev->dev, "msm_prepare_us_euro failed (%d)\n",
+				ret);
+
+	}
+#else
 	pdata->us_euro_gpio = of_get_named_gpio(pdev->dev.of_node,
 				"qcom,us-euro-gpios", 0);
 	if (!gpio_is_valid(pdata->us_euro_gpio))
@@ -7396,6 +7792,7 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 	if (ret)
 		dev_dbg(&pdev->dev, "msm_prepare_us_euro failed (%d)\n",
 			ret);
+#endif
 
 	/* Parse pinctrl info from devicetree */
 	ret = msm_get_pinctrl(pdev);
@@ -7416,6 +7813,20 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 			"%s: Registration with SND event FWK failed ret = %d\n",
 			__func__, ret);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	pdata->us_p_power = regulator_get(&pdev->dev, "vreg_pa_p_5p0");
+	if (IS_ERR(pdata->us_p_power)) {
+		dev_info(&pdev->dev, "ultrasound p power can't be found\n");
+		pdata->us_p_power = NULL;
+	}
+
+	pdata->us_n_power = regulator_get(&pdev->dev, "vreg_pa_n_5p0");
+	if (IS_ERR(pdata->us_n_power)) {
+		dev_info(&pdev->dev, "ultrasound n power can't be found\n");
+		pdata->us_n_power = NULL;
+	}
+#endif
+
 	return 0;
 err:
 	msm_release_pinctrl(pdev);
@@ -7428,6 +7839,13 @@ static int msm_asoc_machine_remove(struct platform_device *pdev)
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	struct msm_asoc_mach_data *pdata =
 				snd_soc_card_get_drvdata(card);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (pdata->us_p_power)
+		regulator_put(pdata->us_p_power);
+	if (pdata->us_n_power)
+		regulator_put(pdata->us_n_power);
+#endif
 
 	snd_event_master_deregister(&pdev->dev);
 	if (pdata->us_euro_gpio > 0) {
