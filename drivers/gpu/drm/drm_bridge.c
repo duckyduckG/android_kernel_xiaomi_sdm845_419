@@ -270,8 +270,18 @@ void drm_bridge_post_disable(struct drm_bridge *bridge)
 	if (!bridge)
 		return;
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (bridge->is_dsi_drm_bridge)
+		mutex_lock(&bridge->lock);
+#endif
+
 	if (bridge->funcs->post_disable)
 		bridge->funcs->post_disable(bridge);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (bridge->is_dsi_drm_bridge)
+		mutex_unlock(&bridge->lock);
+#endif
 
 	drm_bridge_post_disable(bridge->next);
 }
@@ -321,10 +331,90 @@ void drm_bridge_pre_enable(struct drm_bridge *bridge)
 
 	drm_bridge_pre_enable(bridge->next);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (bridge->is_dsi_drm_bridge)
+		mutex_lock(&bridge->lock);
+#endif
+
 	if (bridge->funcs->pre_enable)
 		bridge->funcs->pre_enable(bridge);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (bridge->is_dsi_drm_bridge)
+		mutex_unlock(&bridge->lock);
+#endif
 }
 EXPORT_SYMBOL(drm_bridge_pre_enable);
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+void drm_bridge_disp_param_set(struct drm_bridge *bridge, int cmd)
+{
+	if (!bridge)
+		return;
+
+	drm_bridge_disp_param_set(bridge->next, cmd);
+
+	if (bridge->funcs->disp_param_set)
+		bridge->funcs->disp_param_set(bridge, cmd);
+}
+EXPORT_SYMBOL(drm_bridge_disp_param_set);
+
+ssize_t drm_bridge_disp_param_get(struct drm_bridge *bridge, char *pbuf)
+{
+	ssize_t ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	ret = drm_bridge_disp_param_get(bridge->next, pbuf);
+
+	if (bridge->funcs->disp_param_get)
+		ret = bridge->funcs->disp_param_get(bridge, pbuf);
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_disp_param_get);
+
+int drm_get_panel_info(struct drm_bridge *bridge, char *buf)
+{
+	int rc = 0;
+	if (!bridge)
+		return rc;
+
+	if (bridge->funcs->disp_get_panel_info)
+		return bridge->funcs->disp_get_panel_info(bridge, buf);
+
+	return rc;
+}
+EXPORT_SYMBOL(drm_get_panel_info);
+
+void drm_bridge_disp_count_set(struct drm_bridge *bridge, const char *buf)
+{
+	if (!bridge)
+		return;
+
+	drm_bridge_disp_count_set(bridge->next, buf);
+
+	if (bridge->funcs->disp_count_set)
+		bridge->funcs->disp_count_set(bridge, buf);
+}
+EXPORT_SYMBOL(drm_bridge_disp_count_set);
+
+ssize_t drm_bridge_disp_count_get(struct drm_bridge *bridge, char *buf)
+{
+	ssize_t ret = 0;
+
+	if (!bridge)
+		return 0;
+
+	ret = drm_bridge_disp_count_get(bridge->next, buf);
+
+	if (bridge->funcs->disp_count_get)
+		ret = bridge->funcs->disp_count_get(bridge, buf);
+
+	return ret;
+}
+EXPORT_SYMBOL(drm_bridge_disp_count_get);
+#endif
 
 /**
  * drm_bridge_enable - enables all bridges in the encoder chain
