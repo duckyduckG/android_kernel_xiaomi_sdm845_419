@@ -3042,7 +3042,7 @@ static int fb_notifier_cb(struct notifier_block *self,
 		return rc;
 	}
 	/* Receive notifications from primary panel only */
-	if (evdata && evdata->data && ft5x46 && evdata->is_primary) {
+	if (evdata && evdata->data && ft5x46) {
 		if (event == DRM_EVENT_BLANK) {
 			blank = evdata->data;
 			if (*blank == DRM_BLANK_UNBLANK) {
