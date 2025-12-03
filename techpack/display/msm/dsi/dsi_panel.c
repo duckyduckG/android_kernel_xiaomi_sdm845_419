@@ -5082,11 +5082,12 @@ int dsi_panel_set_nolp(struct dsi_panel *panel)
 	if (rc)
 		DSI_ERR("[%s] failed to send DSI_CMD_SET_NOLP cmd, rc=%d\n",
 		       panel->name, rc);
-exit:
+
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	panel->fod_hbm_enabled = false;
 	panel->in_aod = false;
 #endif
+exit:
 	mutex_unlock(&panel->panel_lock);
 	return rc;
 }
