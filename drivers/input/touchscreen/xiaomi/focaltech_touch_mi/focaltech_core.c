@@ -1708,6 +1708,9 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 	spin_lock_init(&ts_data->irq_lock);
 	mutex_init(&ts_data->report_mutex);
 
+	// Add 10ms delay after POR(power on reset)
+	msleep(10);
+
 	ret = fts_input_init(ts_data);
 	if (ret) {
 		FTS_ERROR("fts input initialize fail");
