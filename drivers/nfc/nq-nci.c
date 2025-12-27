@@ -32,7 +32,9 @@ struct nqx_platform_data {
 	unsigned int ese_gpio;
 	int vdd_levels[2];
 	int max_current;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	const char *clk_src_name;
+#endif
 	/* NFC_CLK pin voting state */
 	bool clk_pin_voting;
 };
@@ -44,6 +46,9 @@ static const struct of_device_id msm_match_table[] = {
 
 MODULE_DEVICE_TABLE(of, msm_match_table);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static struct wakeup_source *fieldon_wl;
+#endif
 struct nqx_dev {
 	wait_queue_head_t	read_wq;
 	wait_queue_head_t	cold_reset_read_wq;
@@ -79,9 +84,11 @@ struct nqx_dev {
 	unsigned int		dev_ref_count;
 	/* Initial CORE RESET notification */
 	unsigned int		core_reset_ntf;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	/* CLK control */
 	bool			clk_run;
 	struct	clk		*s_clk;
+#endif
 	/* read buffer*/
 	size_t kbuflen;
 	u8 *kbuf;
@@ -91,10 +98,12 @@ struct nqx_dev {
 
 static int nfcc_reboot(struct notifier_block *notifier, unsigned long val,
 			void *v);
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 /*clock enable function*/
 static int nqx_clock_select(struct nqx_dev *nqx_dev);
 /*clock disable function*/
 static int nqx_clock_deselect(struct nqx_dev *nqx_dev);
+#endif
 static int nqx_standby_write(struct nqx_dev *nqx_dev,
 				const unsigned char *buf, size_t len);
 
@@ -337,6 +346,13 @@ static ssize_t nfc_read(struct file *filp, char __user *buf,
 		 */
 		return 0;
 	}
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (((tmp[0] & 0xff) == 0x61) && ((tmp[1] & 0xff) == 0x07) && ((tmp[2] & 0xff) == 0x01)) {
+		__pm_wakeup_event(fieldon_wl, msecs_to_jiffies(3*1000));
+	}
+#endif
+
 #ifdef NFC_KERNEL_BU
 		dev_dbg(&nqx_dev->client->dev, "%s : NfcNciRx %x %x %x\n",
 			__func__, tmp[0], tmp[1], tmp[2]);
@@ -853,9 +869,11 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 			usleep_range(10000, 10100);
 		}
 		if (nqx_dev->pdata->clk_pin_voting) {
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 			r = nqx_clock_deselect(nqx_dev);
 			if (r < 0)
 				dev_err(&nqx_dev->client->dev, "unable to disable clock\n");
+#endif
 		}
 		nqx_dev->nfc_ven_enabled = false;
 	} else if (arg == NFC_POWER_ON) {
@@ -870,9 +888,11 @@ int nfc_ioctl_power_states(struct file *filp, unsigned long arg)
 		gpio_set_value(nqx_dev->en_gpio, 1);
 		usleep_range(10000, 10100);
 		if (nqx_dev->pdata->clk_pin_voting) {
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 			r = nqx_clock_select(nqx_dev);
 			if (r < 0)
 				dev_err(&nqx_dev->client->dev, "unable to enable clock\n");
+#endif
 		}
 		nqx_dev->nfc_ven_enabled = true;
 	} else if (arg == NFC_FW_DWL_VEN_TOGGLE) {
@@ -1059,6 +1079,7 @@ static const struct file_operations nfc_dev_fops = {
 #endif
 };
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 /*
  * function: get_nfcc_hw_info()
  *
@@ -1188,6 +1209,10 @@ err_nfcc_hw_info:
 	return ret;
 }
 
+/** Xiaomi-SDM845
+ * Do not need check availability of NFCC.
+ * This function will block NFCC to enter FW download mode.
+ */
 /* Check for availability of NQ_ NFC controller hardware */
 static int nfcc_hw_check(struct i2c_client *client, struct nqx_dev *nqx_dev)
 {
@@ -1428,6 +1453,7 @@ static int nqx_clock_deselect(struct nqx_dev *nqx_dev)
 	}
 	return r;
 }
+#endif
 
 static int nfc_parse_dt(struct device *dev, struct nqx_platform_data *pdata)
 {
@@ -1457,10 +1483,12 @@ static int nfc_parse_dt(struct device *dev, struct nqx_platform_data *pdata)
 		pdata->ese_gpio = -EINVAL;
 	}
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	if (of_property_read_string(np, "qcom,clk-src", &pdata->clk_src_name))
 		pdata->clk_pin_voting = false;
 	else
 		pdata->clk_pin_voting = true;
+#endif
 
 	// optional property
 	r = of_property_read_u32_array(np, NFC_LDO_VOL_DT_NAME,
@@ -1690,6 +1718,10 @@ static int nqx_probe(struct i2c_client *client,
 	mutex_init(&nqx_dev->dev_ref_mutex);
 	spin_lock_init(&nqx_dev->irq_enabled_lock);
 
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	fieldon_wl = wakeup_source_register(nqx_dev->nqx_device, "nfc_locker");
+#endif
+
 	r = alloc_chrdev_region(&nqx_dev->devno, 0, DEV_COUNT, DEVICE_NAME);
 	if (r < 0) {
 		dev_err(&client->dev,
@@ -1735,6 +1767,7 @@ static int nqx_probe(struct i2c_client *client,
 		goto err_ldo_config_failed;
 	}
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	/*
 	 * To be efficient we need to test whether nfcc hardware is physically
 	 * present before attempting further hardware initialisation.
@@ -1747,6 +1780,7 @@ static int nqx_probe(struct i2c_client *client,
 		/* We don't think there is hardware switch NFC OFF */
 		goto err_request_hw_check_failed;
 	}
+#endif
 
 	/* Register reboot notifier here */
 	r = register_reboot_notifier(&nfcc_notifier);
@@ -1762,12 +1796,14 @@ static int nqx_probe(struct i2c_client *client,
 	}
 
 #ifdef NFC_KERNEL_BU
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	r = nqx_clock_select(nqx_dev);
 	if (r < 0) {
 		dev_err(&client->dev,
 			"%s: nqx_clock_select failed\n", __func__);
 		goto err_clock_en_failed;
 	}
+#endif
 	gpio_set_value(platform_data->en_gpio, 1);
 #endif
 	device_init_wakeup(&client->dev, true);
@@ -1862,6 +1898,9 @@ static int nqx_remove(struct i2c_client *client)
 	/* optional gpio, not sure was configured in probe */
 	if (nqx_dev->ese_gpio > 0)
 		gpio_free(nqx_dev->ese_gpio);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	wakeup_source_destroy(fieldon_wl);
+#endif
 	gpio_free(nqx_dev->firm_gpio);
 	gpio_free(nqx_dev->irq_gpio);
 	gpio_free(nqx_dev->en_gpio);
