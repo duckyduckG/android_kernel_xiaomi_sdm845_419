@@ -20,7 +20,6 @@ enum {
 };
 
 struct drm_notify_data {
-	bool is_primary;
 	void *data;
 };
 
