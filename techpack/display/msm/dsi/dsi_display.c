@@ -6713,6 +6713,9 @@ int dsi_display_get_modes(struct dsi_display *display,
 exit:
 	*out_modes = display->modes;
 	rc = 0;
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	primary_display = display;
+#endif
 
 error:
 	if (rc)
