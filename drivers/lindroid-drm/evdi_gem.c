@@ -51,7 +51,7 @@ const struct vm_operations_struct evdi_gem_vm_ops = {
 	.close = evdi_gem_vm_close,
 };
 
-#if KERNEL_VERSION(5, 11, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
 static int evdi_prime_pin(struct drm_gem_object *obj)
 {
 	struct evdi_gem_object *bo = to_evdi_bo(obj);
@@ -64,12 +64,18 @@ static void evdi_prime_unpin(struct drm_gem_object *obj)
 	evdi_unpin_pages(bo);
 }
 
+static struct dma_buf *evdi_gem_prime_export(struct drm_gem_object *obj, int flags)
+{
+	struct drm_device *dev = obj->dev;  /* get drm_device from GEM object */
+	return drm_gem_prime_export(dev, obj, flags);
+}
+
 static const struct drm_gem_object_funcs gem_obj_funcs = {
 	.free = evdi_gem_free_object,
 	.pin = evdi_prime_pin,
 	.unpin = evdi_prime_unpin,
 	.vm_ops = &evdi_gem_vm_ops,
-	.export = drm_gem_prime_export,
+	.export = evdi_gem_prime_export,
 	.get_sg_table = evdi_prime_get_sg_table,
 };
 #endif
@@ -120,7 +126,7 @@ struct evdi_gem_object *evdi_gem_alloc_object(struct drm_device *dev, size_t siz
 
 	atomic_set(&obj->pages_pin_count, 0);
 
-#if KERNEL_VERSION(5, 11, 0) <= LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
 	obj->base.funcs = &gem_obj_funcs;
 #endif
 
@@ -206,7 +212,7 @@ int evdi_drm_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	vma->vm_flags |= VM_MIXEDMAP | VM_DONTDUMP | VM_DONTEXPAND | VM_DONTCOPY;
 #endif
 
-#if KERNEL_VERSION(5, 11, 0) > LINUX_VERSION_CODE
+#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
 	vma->vm_ops = &evdi_gem_vm_ops;
 #endif
 

@@ -73,7 +73,7 @@ static struct drm_driver evdi_driver = {
 #if KERNEL_VERSION(5, 9, 0) <= LINUX_VERSION_CODE
 	.gem_create_object = NULL,
 #endif
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 11, 0)
+#if KERNEL_VERSION(4, 19, 0) <= LINUX_VERSION_CODE
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 	.gem_prime_import_sg_table = evdi_prime_import_sg_table,
