@@ -473,8 +473,6 @@ struct drm_driver {
 	 * @gem_prime_export:
 	 *
 	 * export GEM -> dmabuf
-	 *
-	 * This defaults to drm_gem_prime_export() if not set.
 	 */
 	struct dma_buf * (*gem_prime_export)(struct drm_device *dev,
 				struct drm_gem_object *obj, int flags);
@@ -482,8 +480,6 @@ struct drm_driver {
 	 * @gem_prime_import:
 	 *
 	 * import dmabuf -> GEM
-	 *
-	 * This defaults to drm_gem_prime_import() if not set.
 	 */
 	struct drm_gem_object * (*gem_prime_import)(struct drm_device *dev,
 				struct dma_buf *dma_buf);
