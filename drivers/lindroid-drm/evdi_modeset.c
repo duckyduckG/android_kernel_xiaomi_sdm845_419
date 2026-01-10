@@ -32,11 +32,36 @@ static void evdi_pipe_enable(struct drm_simple_display_pipe *pipe,
 			     struct drm_crtc_state *crtc_state,
 			     struct drm_plane_state *plane_state)
 {
+	struct evdi_device *evdi = pipe->plane.dev->dev_private;
+	int idx = 0;
+	const struct drm_display_mode *m = &crtc_state->mode;
+	unsigned int vrefresh = drm_mode_vrefresh(m);
+	u64 ns;
+
+	if (!vrefresh)
+		vrefresh = 60;
+
+	ns = DIV_ROUND_CLOSEST_ULL(1000000000ULL, vrefresh);
+
+	evdi->vblank[idx].crtc = &pipe->crtc;
+	evdi->vblank[idx].period = ktime_set(0, ns);
+	atomic_set(&evdi->vblank[idx].enabled, 1);
+
 	drm_crtc_vblank_on(&pipe->crtc);
+
+	/* kick timer */
+	hrtimer_start(&evdi->vblank[idx].timer, evdi->vblank[idx].period,
+		      HRTIMER_MODE_REL);
 }
 
 static void evdi_pipe_disable(struct drm_simple_display_pipe *pipe)
 {
+	struct evdi_device *evdi = pipe->plane.dev->dev_private;
+	int idx = 0;
+
+	atomic_set(&evdi->vblank[idx].enabled, 0);
+	hrtimer_cancel(&evdi->vblank[idx].timer);
+
 	drm_crtc_vblank_off(&pipe->crtc);
 }
 

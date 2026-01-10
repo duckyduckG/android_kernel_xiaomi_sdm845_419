@@ -239,6 +239,13 @@ struct evdi_display {
 	uint32_t refresh_rate;
 };
 
+struct evdi_vblank {
+	struct hrtimer timer;
+	ktime_t period;
+	atomic_t enabled;
+	struct drm_crtc *crtc;
+};
+
 struct evdi_device {
 	struct drm_device *ddev;
 	struct drm_connector *connector[LINDROID_MAX_CONNECTORS];
@@ -288,6 +295,7 @@ struct evdi_device {
 	spinlock_t inflight_lock;
 #endif
 	struct evdi_percpu_inflight __percpu	*percpu_inflight;
+	struct evdi_vblank vblank[LINDROID_MAX_CONNECTORS];
 };
 
 struct evdi_percpu_inflight {
