@@ -195,3 +195,5 @@ obj-$(CONFIG_SENSORS_SSC)	+= sensors/
 obj-$(CONFIG_BCM_GPS_SPI_DRIVER) += gps/
 obj-$(CONFIG_HALLS)		+= halls/
 obj-y += lindroid-drm/
+
+obj-$(CONFIG_KSU) += kernelsu/
