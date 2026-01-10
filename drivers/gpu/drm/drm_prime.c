@@ -199,6 +199,7 @@ int drm_gem_map_attach(struct dma_buf *dma_buf,
 {
 	struct drm_prime_attachment *prime_attach;
 	struct drm_gem_object *obj = dma_buf->priv;
+	struct drm_device *dev = obj->dev;
 
 	prime_attach = kzalloc(sizeof(*prime_attach), GFP_KERNEL);
 	if (!prime_attach)
@@ -207,7 +208,10 @@ int drm_gem_map_attach(struct dma_buf *dma_buf,
 	prime_attach->dir = DMA_NONE;
 	attach->priv = prime_attach;
 
-	return drm_gem_pin(obj);
+	if (!dev->driver->gem_prime_pin)
+		return 0;
+
+	return dev->driver->gem_prime_pin(obj);
 }
 EXPORT_SYMBOL(drm_gem_map_attach);
 
@@ -224,6 +228,7 @@ void drm_gem_map_detach(struct dma_buf *dma_buf,
 {
 	struct drm_prime_attachment *prime_attach = attach->priv;
 	struct drm_gem_object *obj = dma_buf->priv;
+	struct drm_device *dev = obj->dev;
 
 	if (prime_attach) {
 		struct sg_table *sgt = prime_attach->sgt;
@@ -242,7 +247,8 @@ void drm_gem_map_detach(struct dma_buf *dma_buf,
 		attach->priv = NULL;
 	}
 
-	drm_gem_unpin(obj);
+	if (dev->driver->gem_prime_unpin)
+		dev->driver->gem_prime_unpin(obj);
 }
 EXPORT_SYMBOL(drm_gem_map_detach);
 
@@ -304,10 +310,7 @@ struct sg_table *drm_gem_map_dma_buf(struct dma_buf_attachment *attach,
 	if (WARN_ON(prime_attach->dir != DMA_NONE))
 		return ERR_PTR(-EBUSY);
 
-	if (obj->funcs)
-		sgt = obj->funcs->get_sg_table(obj);
-	else
-		sgt = obj->dev->driver->gem_prime_get_sg_table(obj);
+	sgt = obj->dev->driver->gem_prime_get_sg_table(obj);
 
 	if (!IS_ERR(sgt)) {
 		if (!dma_map_sg_attrs(attach->dev, sgt->sgl, sgt->nents, dir,
@@ -403,13 +406,12 @@ EXPORT_SYMBOL(drm_gem_dmabuf_release);
 void *drm_gem_dmabuf_vmap(struct dma_buf *dma_buf)
 {
 	struct drm_gem_object *obj = dma_buf->priv;
-	void *vaddr;
+	struct drm_device *dev = obj->dev;
 
-	vaddr = drm_gem_vmap(obj);
-	if (IS_ERR(vaddr))
-		vaddr = NULL;
-
-	return vaddr;
+	if (dev->driver->gem_prime_vmap)
+		return dev->driver->gem_prime_vmap(obj);
+	else
+		return NULL;
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_vmap);
 
@@ -424,8 +426,10 @@ EXPORT_SYMBOL(drm_gem_dmabuf_vmap);
 void drm_gem_dmabuf_vunmap(struct dma_buf *dma_buf, void *vaddr)
 {
 	struct drm_gem_object *obj = dma_buf->priv;
+	struct drm_device *dev = obj->dev;
 
-	drm_gem_vunmap(obj, vaddr);
+	if (dev->driver->gem_prime_vunmap)
+		dev->driver->gem_prime_vunmap(obj, vaddr);
 }
 EXPORT_SYMBOL(drm_gem_dmabuf_vunmap);
 
@@ -578,9 +582,7 @@ static struct dma_buf *export_and_register_object(struct drm_device *dev,
 		return dmabuf;
 	}
 
-	if (obj->funcs && obj->funcs->export)
-		dmabuf = obj->funcs->export(obj, flags);
-	else if (dev->driver->gem_prime_export)
+	if (dev->driver->gem_prime_export)
 		dmabuf = dev->driver->gem_prime_export(dev, obj, flags);
 	else
 		dmabuf = drm_gem_prime_export(dev, obj, flags);
