@@ -40,6 +40,7 @@
 #include <linux/fb.h>
 #include <drm/drm_bridge.h>
 #include <drm/drm_notifier.h>
+#include <soc/qcom/socinfo.h>
 
 #define FPC_SCREEN_HOLD_TIME 2000
 #define FPC_TTW_HOLD_TIME 2000
@@ -374,7 +375,7 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 		if (rc)
 			goto free_irq_exit;
 
-#ifdef CONFIG_FINGERPRINT_FP_VREG_CONTROL
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) {
 		dev_err(dev, "fp_vdd_reg enabling...\n");
 		rc = vreg_setup(fpc1020, "fp_vdd_vreg", true);
 		if (rc) {
@@ -382,7 +383,7 @@ static int device_prepare(struct fpc1020_data *fpc1020, bool enable)
 			goto free_irq_exit;
 		}
 		dev_err(dev, "fp_vdd_reg enabled success\n");
-#endif
+	}
 
 		usleep_range(PWR_ON_SLEEP_MIN_US, PWR_ON_SLEEP_MAX_US);
 
@@ -647,17 +648,17 @@ static int fpc_fb_notif_callback(struct notifier_block *nb,
 		switch (blank) {
 		case DRM_BLANK_POWERDOWN:
 			fpc1020->fb_black = true;
-#ifdef CONFIG_FINGERPRINT_FPC_SCREEN_NOTIFY
-			__pm_wakeup_event(fpc1020->screen_wl, FPC_SCREEN_HOLD_TIME);
-			sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_screen_status.attr.name);
-#endif
+			if (get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) {
+				__pm_wakeup_event(fpc1020->screen_wl, FPC_SCREEN_HOLD_TIME);
+				sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_screen_status.attr.name);
+			}
 			break;
 		case DRM_BLANK_UNBLANK:
 			fpc1020->fb_black = false;
-#ifdef CONFIG_FINGERPRINT_FPC_SCREEN_NOTIFY
-			__pm_wakeup_event(fpc1020->screen_wl, FPC_SCREEN_HOLD_TIME);
-			sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_screen_status.attr.name);
-#endif
+			if (get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) {
+				__pm_wakeup_event(fpc1020->screen_wl, FPC_SCREEN_HOLD_TIME);
+				sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_screen_status.attr.name);
+			}
 			break;
 		default:
 			pr_debug("%s defalut\n", __func__);
