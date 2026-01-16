@@ -859,7 +859,7 @@ static int gf_probe(struct platform_device *pdev)
 		goto error_hw;
 	}
 
-	fp_wakelock = wakeup_source_register(NULL, "fp_wakelock");
+	fp_wakelock = wakeup_source_register(&gf_dev->spi->dev, "fp_wakelock");
 	pr_debug("version V%d.%d.%02d\n", VER_MAJOR, VER_MINOR, PATCH_LEVEL);
 
 	return status;
