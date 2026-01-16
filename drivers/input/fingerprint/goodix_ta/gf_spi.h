@@ -139,9 +139,7 @@ struct gf_dev {
 	char device_available;
 	char fb_black;
 	char wait_finger_down;
-#ifdef CONFIG_FINGERPRINT_FP_VREG_CONTROL
 	struct regulator *vreg;
-#endif
 	int proximity_state; /* 0:far 1:near */
 };
 
