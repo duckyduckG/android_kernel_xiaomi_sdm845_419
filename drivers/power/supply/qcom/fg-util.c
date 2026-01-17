@@ -862,6 +862,10 @@ wait:
 		goto out;
 	}
 out:
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+	if (fg->empty_restart_fg)
+		fg->empty_restart_fg = false;
+#endif
 	fg->fg_restarting = false;
 	return rc;
 }

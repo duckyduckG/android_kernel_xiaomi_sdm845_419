@@ -5575,7 +5575,6 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->hvdcp_detect_work);
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	cancel_delayed_work_sync(&chg->check_vbus_work);
-	// cancel_delayed_work_sync(&chg->monitor_low_temp_work);
 #endif
 
 	/* reset input current limit voters */
@@ -5856,8 +5855,9 @@ static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 		smblib_dbg(chg, PR_MISC, "TypeC %s insertion\n",
 			smblib_typec_mode_name[chg->typec_mode]);
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-	/*D5X not support wireless charging when otg devices inserted,
-	  but E5 support caused byuse external boost circuit for otg*/
+	/* D5X not support wireless charging when otg devices inserted,
+	 * but E5 support caused byuse external boost circuit for otg
+	 */
 	if (chg->wireless_charging_flag) {
 		if (chg->typec_mode != POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER)
 			smblib_wireless_set_enable(chg, false);
@@ -6028,7 +6028,7 @@ irqreturn_t smblib_handle_dc_plugin(int irq, void *data)
 		val.intval = 1;
 		power_supply_set_property(chg->dc_psy,
 				POWER_SUPPLY_PROP_ONLINE, &val);
-#if defined(CONFIG_MACH_XIAOMI_SDM845) && defined(CONFIG_THERMAL)
+#if defined(CONFIG_THERMAL)
 		val.intval = chg->dc_temp_level;
 		power_supply_set_property(chg->batt_psy, POWER_SUPPLY_PROP_DC_THERMAL_LEVELS, &val);
 #endif
@@ -6612,7 +6612,6 @@ unlock:
 #define CONNECTOR_HEALTH_TIME_20S	20000
 #define CONNECTOR_HEALTH_TIME_5S	5000
 #define CONNECTOR_HEALTH_COUNT		6
-
 static void smblib_connector_health_work(struct work_struct *work)
 {
 	struct smb_charger *chg = container_of(work, struct smb_charger,

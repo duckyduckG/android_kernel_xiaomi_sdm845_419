@@ -54,11 +54,6 @@
 #define CHG_EN_SRC_BIT				BIT(7)
 #define CHG_EN_POLARITY_BIT			BIT(6)
 
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-#define CHGR_CHARGING_ENABLE			(CHGR_BASE + 0x42)
-#define CHG_EN_CMD						BIT(0)
-#endif
-
 #define CFG_REG					(CHGR_BASE + 0x53)
 #define CHG_OPTION_PIN_TRIM_BIT			BIT(7)
 #define BATN_SNS_CFG_BIT			BIT(4)
@@ -762,15 +757,6 @@ static int smb1355_get_prop_online(struct smb1355 *chip,
 		val->intval = chip->charging_enabled;
 		goto done;
 	}
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-	rc = smb1355_read(chip, POWER_PATH_STATUS_REG, &stat);
-	if (rc < 0) {
-		pr_err("failed to read POWER_PATH_STATUS_REG %d\n", rc);
-	} else {
-		val->intval = (stat & USE_USBIN_BIT) &&
-                    (stat & VALID_INPUT_POWER_SOURCE_STS_BIT);
-	}
-#else
 	rc = smb1355_read(chip, BATTERY_STATUS_3_REG, &stat);
 	if (rc < 0) {
 		pr_err("failed to read BATTERY_STATUS_3_REG %d\n", rc);
@@ -778,11 +764,29 @@ static int smb1355_get_prop_online(struct smb1355 *chip,
 		val->intval = (bool)(stat & ENABLE_CHARGING_BIT);
 		chip->charging_enabled = val->intval;
 	}
-#endif
 done:
 	mutex_unlock(&chip->suspend_lock);
 	return rc;
 }
+
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
+static int smb1355_get_prop_online_xm(struct smb1355 *chip,
+					union power_supply_propval *val)
+{
+	int rc = 0;
+	u8 stat;
+
+	rc = smb1355_read(chip, POWER_PATH_STATUS_REG, &stat);
+	if (rc < 0) {
+		pr_err("failed to read POWER_PATH_STATUS_REG %d\n", rc);
+		goto err;
+	} else
+		val->intval = (stat & USE_USBIN_BIT) &&
+                    (stat & VALID_INPUT_POWER_SOURCE_STS_BIT);
+err:
+	return rc;
+}
+#endif
 
 static int smb1355_get_prop_pin_enabled(struct smb1355 *chip,
 					union power_supply_propval *val)
@@ -845,8 +849,15 @@ static int smb1355_parallel_get_prop(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CHARGE_TYPE:
 		rc = smb1355_get_prop_charge_type(chip, val);
 		break;
-	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
 	case POWER_SUPPLY_PROP_ONLINE:
+		rc = smb1355_get_prop_online_xm(chip, val);
+		break;
+#endif
+	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
+	case POWER_SUPPLY_PROP_ONLINE:
+#endif
 		rc = smb1355_get_prop_online(chip, val);
 		break;
 	case POWER_SUPPLY_PROP_PIN_ENABLED:
@@ -971,8 +982,8 @@ static int smb1355_set_parallel_charging(struct smb1355 *chip, bool disable)
 	 * When enabling charging set it to pin control
 	 */
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-	rc = smb1355_masked_write(chip, CHGR_CHARGING_ENABLE,
-			CHG_EN_CMD, disable ? 0 : CHG_EN_CMD);
+	rc = smb1355_masked_write(chip, CHGR_CHARGING_ENABLE_CMD_REG,
+			CHARGING_ENABLE_CMD_BIT, disable ? 0 : CHARGING_ENABLE_CMD_BIT);
 #else
 	rc = smb1355_masked_write(chip, CHGR_CFG2_REG,
 			CHG_EN_POLARITY_BIT | CHG_EN_SRC_BIT,

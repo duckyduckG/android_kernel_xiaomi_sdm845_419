@@ -1799,6 +1799,7 @@ static int fg_set_recharge_soc(struct fg_dev *fg, int recharge_soc)
 		return 0;
 
 	fg_encode(fg->sp, FG_SRAM_RECHARGE_SOC_THR, recharge_soc, &buf);
+
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	if ((buf <= DEFAULT_RECHARGE_SOC_RAW)
 			&& (fg->health != POWER_SUPPLY_HEALTH_WARM))
@@ -2827,10 +2828,6 @@ static void status_change_work(struct work_struct *work)
 	fg_ttf_update(fg);
 	fg->prev_charge_status = fg->charge_status;
 out:
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-	if (fg->empty_restart_fg)
-		fg->empty_restart_fg = false;
-#endif
 	fg_dbg(fg, FG_STATUS, "charge_status:%d charge_type:%d charge_done:%d\n",
 		fg->charge_status, fg->charge_type, fg->charge_done);
 	fg_relax(fg, FG_STATUS_NOTIFY_WAKE);
@@ -6199,11 +6196,13 @@ static int fg_gen3_resume(struct device *dev)
 {
 	struct fg_gen3_chip *chip = dev_get_drvdata(dev);
 	struct fg_dev *fg = &chip->fg;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	int rc;
 
 	rc = fg_esr_timer_config(fg, false);
 	if (rc < 0)
 		pr_err("Error in configuring ESR timer, rc=%d\n", rc);
+#endif
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	schedule_delayed_work(&fg->esr_timer_config_work, 0);
