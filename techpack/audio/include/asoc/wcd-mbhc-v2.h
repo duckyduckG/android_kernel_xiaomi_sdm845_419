@@ -424,7 +424,6 @@ struct usbc_ana_audio_config {
 	int euro_us_hw_switch_gpio;
 #endif
 	struct device_node *usbc_en1_gpio_p; /* used by pinctrl API */
-	struct device_node *usbc_en2_gpio_p; /* used by pinctrl API */
 	struct device_node *usbc_force_gpio_p; /* used by pinctrl API */
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	struct device_node *euro_us_hw_switch_gpio_p; /* used by pinctrl API */
@@ -446,8 +445,9 @@ struct wcd_mbhc_config {
 	int anc_micbias;
 	bool enable_anc_mic_detect;
 	u32 enable_usbc_analog;
-	bool usbc_analog_legacy;
 	bool moisture_duty_cycle_en;
+	/* Non-FSA4480 legacy analog audio */
+	bool enable_usbc_analog_legacy;
 	struct usbc_ana_audio_config usbc_analog_cfg;
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 	void (*enable_dual_adc_gpio)(struct device_node *node, bool en);
