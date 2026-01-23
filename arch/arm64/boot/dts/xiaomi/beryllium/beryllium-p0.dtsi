@@ -24,31 +24,6 @@
 #include "../common/xiaomi-common-sde-display.dtsi"
 
 &soc {
-	gpio_keys {
-		compatible = "gpio-keys";
-		label = "gpio-keys";
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&key_vol_up_default>;
-
-		vol_up {
-			label = "volume_up";
-			gpios = <&pm8998_gpios 6 GPIO_ACTIVE_LOW>;
-			linux,input-type = <1>;
-			linux,code = <115>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-			linux,can-disable;
-		};
-		hall_key {
-			label = "hall_key";
-			gpios = <&tlmm 124 GPIO_ACTIVE_LOW>;
-			linux,input-type = <5>;
-			linux,code = <0>;
-			gpio-key,wakeup;
-			debounce-interval = <15>;
-		};
-	};
 	disp_vci_vreg: disp_vci_vreg {
 		compatible = "regulator-fixed";
 		regulator-name = "disp_vci_vreg";
@@ -167,89 +142,21 @@
 	status = "okay";
 };
 
-&mdss_mdp {
-	#cooling-cells = <2>;
-	connectors = <&sde_rscc &sde_wb &sde_dsi>;
-};
-
-&pm8998_l28{
+&pm8998_l28 {
 	regulator-min-microvolt = <3300000>;
 	regulator-max-microvolt = <3300000>;
 	qcom,init-voltage = <3300000>;
 };
 
-&ufsphy_mem {
-	compatible = "qcom,ufs-phy-qmp-v3";
-
-	vdda-phy-supply = <&pm8998_l1>; /* 0.88v */
-	vdda-pll-supply = <&pm8998_l26>; /* 1.2v */
-	vdda-phy-max-microamp = <62900>;
-	vdda-pll-max-microamp = <18300>;
-
-	status = "ok";
-};
-
-&ufshc_mem {
-	vdd-hba-supply = <&ufs_phy_gdsc>;
-	vdd-hba-fixed-regulator;
-	vcc-supply = <&pm8998_l20>;
-	vcc-voltage-level = <2950000 2960000>;
-	vccq2-supply = <&pm8998_s4>;
-	vcc-max-microamp = <600000>;
-	vccq2-max-microamp = <600000>;
-
-	qcom,vddp-ref-clk-supply = <&pm8998_l2>;
-	qcom,vddp-ref-clk-max-microamp = <100>;
-
-	status = "ok";
-};
-
 &sdhc_2 {
-	vdd-supply = <&pm8998_l21>;
-	qcom,vdd-voltage-level = <2950000 2960000>;
-	qcom,vdd-current-level = <200 800000>;
-
-	vdd-io-supply = <&pm8998_l13>;
-	qcom,vdd-io-voltage-level = <1808000 2960000>;
-	qcom,vdd-io-current-level = <200 22000>;
-
-	pinctrl-names = "active", "sleep", "ds_400KHz",
-			"ds_50MHz", "ds_100MHz", "ds_200MHz";
-	pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on &storage_cd>;
-	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &storage_cd>;
-	pinctrl-2 = <&sdc2_clk_ds_400KHz
-			&sdc2_cmd_ds_400KHz &sdc2_data_ds_400KHz>;
-	pinctrl-3 = <&sdc2_clk_ds_50MHz
-			&sdc2_cmd_ds_50MHz &sdc2_data_ds_50MHz>;
-	pinctrl-4 = <&sdc2_clk_ds_100MHz
-			&sdc2_cmd_ds_100MHz &sdc2_data_ds_100MHz>;
-	pinctrl-5 = <&sdc2_clk_ds_200MHz
-			&sdc2_cmd_ds_200MHz &sdc2_data_ds_200MHz>;
-
 	cd-gpios = <&tlmm 126 GPIO_ACTIVE_HIGH>;
-
-	status = "ok";
 };
 
-&pmi8998_switch2 {
-	pinctrl-names = "led_enable", "led_disable";
-	pinctrl-0 = <&flash_led3_iris_en>;
-	pinctrl-1 = <&flash_led3_iris_dis>;
-};
-
-&vendor{
+&vendor {
 	mtp_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
 		#include "battery/batterydata-e10-atl-4000mAh.dtsi"
 		#include "battery/batterydata-e10-cos-4000mAh.dtsi"
-	};
-
-	extcon_usb1: extcon_usb1 {
-		compatible = "linux,extcon-usb-gpio";
-		vbus-gpio = <&pmi8998_gpios 8 GPIO_ACTIVE_HIGH>;
-
-		pinctrl-names = "default";
-		pinctrl-0 = <&usb2_vbus_det_default>;
 	};
 };
 
@@ -330,14 +237,6 @@
 	qcom,enable-ctm;
 };
 
-&qupv3_se9_2uart {
-	status = "ok";
-};
-
-&qupv3_se8_spi {
-	status = "ok";
-};
-
 &qupv3_se5_i2c {
 	status = "ok";
 	/*smart PA*/
@@ -413,7 +312,6 @@
 			novatek,hw-version = <0x2>;
 			novatek,fw-name = "novatek_nt36672_e10_hw02.fw";
 		};
-
 		/* MP */
 		/*novatek,mp-support-dt;*/
 	};
@@ -526,10 +424,6 @@
 	pinctrl-1 = <&atest_usb13_active>;
 	mi,efuse-pll-bias;
 	mi,efuse-pll-bias-seq = <1 0x1d>;
-};
-
-&pmi8998_pdphy {
-	vbus-supply = <&smb2_vbus>;
 };
 
 &soc {
