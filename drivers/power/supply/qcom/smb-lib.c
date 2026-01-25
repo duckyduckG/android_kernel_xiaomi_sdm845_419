@@ -2722,7 +2722,7 @@ static int smblib_therm_charging(struct smb_charger *chg)
 	if (chg->system_temp_level >= MAX_TEMP_LEVEL)
 		return 0;
 
-	switch (chg->usb_psy_desc.type) {
+	switch (chg->real_charger_type) {
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
 		thermal_icl_ua = chg->thermal_mitigation_qc2[chg->system_temp_level];
 		break;
@@ -2830,7 +2830,7 @@ int smblib_set_prop_system_temp_level(struct smb_charger *chg,
 	smblib_dbg(chg, PR_OEM, "thermal level:%d, batt temp:%d, thermal_levels:%d"
 			   "chg->system_temp_level:%d, chg->typec_present=%d charger_type:%d\n",
 			   val->intval, batt_temp.intval, chg->thermal_levels,
-			   chg->system_temp_level, chg->typec_present, chg->usb_psy_desc.type);
+			   chg->system_temp_level, chg->typec_present, chg->real_charger_type);
 #else
 	if (chg->system_temp_level == 0)
 		return vote(chg->fcc_votable, THERMAL_DAEMON_VOTER, false, 0);
