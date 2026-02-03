@@ -219,6 +219,8 @@
 		qcom,sde-qos-cpu-dma-latency = <300>;
 
 		qcom,sde-inline-rotator = <&mdss_rotator 0>;
+		qcom,sde-inline-rot-xin = <10 11>;
+		qcom,sde-inline-rot-xin-type = "sspp", "wb";
 
 		/* offsets are relative to "mdp_phys + qcom,sde-off */
 		qcom,sde-inline-rot-clk-ctrl = <0x2bc 0x8>, <0x2bc 0xc>;
@@ -376,10 +378,6 @@
 		interrupts = <2 IRQ_TYPE_LEVEL_HIGH>;
 
 		power-domains = <&mdss_mdp>;
-
-		/* Offline rotator RT setting */
-		qcom,mdss-rot-parent = <&mdss_mdp 0>;
-		qcom,mdss-rot-xin-id = <10 11>;
 
 		/* Offline rotator QoS setting */
 		qcom,mdss-rot-vbif-qos-setting = <3 3 3 3 3 3 3 3>;
