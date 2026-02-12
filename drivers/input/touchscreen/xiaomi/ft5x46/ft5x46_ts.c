@@ -13,7 +13,6 @@
  *
  */
 #include "ft5x46_ts.h"
-#include <linux/hwinfo.h>
 #include "ft8716_pramboot.h"
 
 /* #define FT5X46_DEBUG_PERMISSION */
