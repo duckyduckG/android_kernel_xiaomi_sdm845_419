@@ -1548,7 +1548,7 @@ static const struct file_operations tpdbg_operations = {
 	.release = tpdbg_release,
 };
 
-#ifdef CONFIG_TOUCHSCREEN_FTS_MI_POWER_SUPPLY
+/* function used by perseus start */
 static void fts_power_supply_work(struct work_struct *work)
 {
 	struct fts_ts_data *ts_data = container_of(work, struct fts_ts_data, power_supply_work);
@@ -1576,7 +1576,7 @@ static int fts_power_supply_event(struct notifier_block *nb, unsigned long event
 	queue_work(ts_data->event_wq, &ts_data->power_supply_work);
 	return 0;
 }
-#endif
+/* function used by perseus end */
 
 #ifdef CONFIG_DRM
 /*****************************************************************************
@@ -1842,10 +1842,11 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 	}
 	INIT_WORK(&ts_data->resume_work, fts_resume_work);
 	INIT_WORK(&ts_data->suspend_work, fts_suspend_work);
-#ifdef CONFIG_TOUCHSCREEN_FTS_MI_POWER_SUPPLY
-	INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
-	ts_data->is_usb_exist = -1;
-#endif
+
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS) {
+		INIT_WORK(&ts_data->power_supply_work, fts_power_supply_work);
+		ts_data->is_usb_exist = -1;
+	}
 
 	ret = fts_irq_registration(ts_data);
 	if (ret) {
@@ -1863,10 +1864,10 @@ static int fts_ts_probe(struct i2c_client *client, const struct i2c_device_id *i
 	ts_data->dev_pm_suspend = false;
 	init_completion(&ts_data->dev_pm_suspend_completion);
 
-#ifdef CONFIG_TOUCHSCREEN_FTS_MI_POWER_SUPPLY
-	ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
-	power_supply_reg_notifier(&ts_data->power_supply_notifier);
-#endif
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS) {
+		ts_data->power_supply_notifier.notifier_call = fts_power_supply_event;
+		power_supply_reg_notifier(&ts_data->power_supply_notifier);
+	}
 
 #ifdef CONFIG_DRM
 	ts_data->fb_notif.notifier_call = fb_notifier_callback;

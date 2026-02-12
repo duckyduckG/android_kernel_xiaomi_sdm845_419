@@ -69,6 +69,7 @@
 #include "focaltech_common.h"
 #include <linux/firmware.h>
 #include <linux/power_supply.h>
+#include <soc/qcom/socinfo.h>
 
 /*****************************************************************************
 * Private constant and macro definitions using #define
@@ -179,10 +180,8 @@ struct fts_ts_data {
 	bool fw_forceupdate;
 	struct work_struct suspend_work;
 	struct work_struct resume_work;
-#ifdef CONFIG_TOUCHSCREEN_FTS_MI_POWER_SUPPLY
 	struct work_struct power_supply_work;
 	int is_usb_exist;
-#endif
 	struct workqueue_struct *event_wq;
 	struct completion dev_pm_suspend_completion;
 #if FTS_PINCTRL_EN
@@ -194,9 +193,7 @@ struct fts_ts_data {
 #ifdef CONFIG_DRM
 	struct notifier_block fb_notif;
 #endif
-#ifdef CONFIG_TOUCHSCREEN_FTS_MI_POWER_SUPPLY
 	struct notifier_block power_supply_notifier;
-#endif
 	struct dentry *debugfs;
 	struct proc_dir_entry *tp_selftest_proc;
 	struct proc_dir_entry *tp_data_dump_proc;

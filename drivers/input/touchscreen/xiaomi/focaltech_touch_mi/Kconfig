@@ -10,13 +10,6 @@ config TOUCHSCREEN_FTS_MI
 		  Say Y here if you have Focaltech touch panel.
 		  If unsure, say N.
 
-config TOUCHSCREEN_FTS_MI_POWER_SUPPLY
-        bool "USB Power Supply"
-        default n
-        help
-            Say y here if phone type is perseus
-            If unsure, say N
-
 config TOUCHSCREEN_FTS_MI_DIRECTORY
     string "Focaltech ts directory name"
     default "focaltech_touch"
