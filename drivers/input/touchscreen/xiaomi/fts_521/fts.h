@@ -39,6 +39,8 @@
 #include "fts_lib/ftsSoftware.h"
 #include "fts_lib/ftsHardware.h"
 #include <linux/completion.h>
+#include <soc/qcom/socinfo.h>
+
 /****************** CONFIGURATION SECTION ******************/
 /** @defgroup conf_section	 Driver Configuration Section
 * Settings of the driver code in order to suit the HW set up and the application behavior
@@ -215,7 +217,6 @@ struct fts_ts_info;
 typedef void (*event_dispatch_handler_t)
  (struct fts_ts_info *info, unsigned char *data);
 
-#ifdef CONFIG_SECURE_TOUCH
 /*
 struct fts_secure_delay {
 	bool palm_pending;
@@ -234,15 +235,44 @@ struct fts_secure_info {
 //	struct mutex palm_lock;
 	void *fts_info;
 };
-#endif
 
-#ifdef CONFIG_I2C_BY_DMA
+enum fts_device_type {
+    HW_DIPPER = 0,
+	HW_POLARIS,
+	HW_UNKNOWN
+};
+
+static inline enum fts_device_type fts_get_device(void)
+{
+	uint32_t device = get_hw_version_platform();
+
+	switch (device) {
+		case HARDWARE_PLATFORM_DIPPERN:
+			return HW_DIPPER;
+		case HARDWARE_PLATFORM_POLARIS:
+			return HW_POLARIS;
+		default:
+			return HW_UNKNOWN;
+	};
+};
+
+static inline bool i2c_by_dma(void)
+{
+	enum fts_device_type pltfm = fts_get_device();
+	return (pltfm == HW_DIPPER);
+}
+
+static inline bool secure_touch(void)
+{
+	enum fts_device_type pltfm = fts_get_device();
+	return (pltfm == HW_DIPPER || pltfm == HW_POLARIS);
+}
+
 struct fts_dma_buf {
 	struct mutex dmaBufLock;
 	u8 *rdBuf;
 	u8 *wrBuf;
 };
-#endif
 
 /**
  * FTS capacitive touch screen device information
@@ -339,12 +369,8 @@ struct fts_ts_info {
 	struct device *fts_touch_dev;
 	char *current_clicknum_file;
 #endif
-#ifdef CONFIG_SECURE_TOUCH
 	struct fts_secure_info *secure_info;
-#endif
-#ifdef CONFIG_I2C_BY_DMA
 	struct fts_dma_buf *dma_buf;
-#endif
 	bool lockdown_is_ok;
 	struct completion tp_reset_completion;
 	atomic_t system_is_resetting;

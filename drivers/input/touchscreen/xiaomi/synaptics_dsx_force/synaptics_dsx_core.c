@@ -47,11 +47,9 @@
 #include <linux/input/mt.h>
 #endif
 
-#if defined(CONFIG_SECURE_TOUCH)
 #include <linux/i2c.h>
 #include <linux/pm_runtime.h>
 #include <linux/errno.h>
-#endif
 
 #ifdef CONFIG_TOUCH_DEBUG_FS
 #include <linux/fs.h>
@@ -177,7 +175,6 @@ static int synaptics_rmi4_irq_enable(struct synaptics_rmi4_data *rmi4_data,
 static void synaptics_rmi4_wakeup_reconfigure(struct synaptics_rmi4_data *rmi4_data,
 		bool enable);
 
-#if defined(CONFIG_SECURE_TOUCH)
 static ssize_t synaptics_secure_touch_enable_show(struct device *dev,
 		struct device_attribute *attr, char *buf);
 
@@ -186,7 +183,6 @@ static ssize_t synaptics_secure_touch_enable_store(struct device *dev,
 
 static ssize_t synaptics_secure_touch_show(struct device *dev,
 	    struct device_attribute *attr, char *buf);
-#endif
 
 #ifdef CONFIG_DRM
 static int synaptics_rmi4_drm_notifier_cb(struct notifier_block *self,
@@ -822,70 +818,19 @@ TS_ENABLE_FOPS(wake_gesture, double_tap);
 TS_ENABLE_FOPS(reversed_keys, reversed_keys);
 #endif
 
-#if defined(CONFIG_SECURE_TOUCH)
 static DEVICE_ATTR(secure_touch_enable, (S_IRUGO | S_IWUSR | S_IWGRP), synaptics_secure_touch_enable_show, synaptics_secure_touch_enable_store);
 static DEVICE_ATTR(secure_touch, S_IRUGO , synaptics_secure_touch_show, NULL);
-#if 0
-static int synaptics_secure_touch_clk_prepare_enable(
-		struct synaptics_rmi4_data *rmi4_data)
-{
-	int ret;
-
-	ret = clk_prepare_enable(rmi4_data->iface_clk);
-	if (ret) {
-		dev_err(rmi4_data->pdev->dev.parent,
-			"error on clk_prepare_enable(iface_clk):%d\n", ret);
-		return ret;
-	}
-
-	ret = clk_prepare_enable(rmi4_data->core_clk);
-	if (ret) {
-		clk_disable_unprepare(rmi4_data->iface_clk);
-		dev_err(rmi4_data->pdev->dev.parent,
-			"error clk_prepare_enable(core_clk):%d\n", ret);
-	}
-	return ret;
-}
-
-static void synaptics_secure_touch_clk_disable_unprepare(
-		struct synaptics_rmi4_data *rmi4_data)
-{
-	clk_disable_unprepare(rmi4_data->core_clk);
-	clk_disable_unprepare(rmi4_data->iface_clk);
-}
-#endif
 static void synaptics_secure_touch_init(struct synaptics_rmi4_data *data)
 {
-	//int ret = 0;
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) {
 
-	data->st_initialized = 0;
-	init_completion(&data->st_powerdown);
-	init_completion(&data->st_irq_processed);
-#if 0
-	/* Get clocks */
-	data->core_clk = clk_get(data->pdev->dev.parent, "core_clk");
-	if (IS_ERR(data->core_clk)) {
-		ret = PTR_ERR(data->core_clk);
-		dev_err(data->pdev->dev.parent,
-			"%s: error on clk_get(core_clk):%d\n", __func__, ret);
+		data->st_initialized = 0;
+		init_completion(&data->st_powerdown);
+		init_completion(&data->st_irq_processed);
+
+		data->st_initialized = 1;
 		return;
 	}
-
-	data->iface_clk = clk_get(data->pdev->dev.parent, "iface_clk");
-	if (IS_ERR(data->iface_clk)) {
-		ret = PTR_ERR(data->iface_clk);
-		dev_err(data->pdev->dev.parent,
-			"%s: error on clk_get(iface_clk)\n", __func__);
-		goto err_iface_clk;
-	}
-#endif
-	data->st_initialized = 1;
-	return;
-#if 0
-err_iface_clk:
-		clk_put(data->core_clk);
-		data->core_clk = NULL;
-#endif
 }
 static void synaptics_secure_touch_notify(struct synaptics_rmi4_data *data)
 {
@@ -893,13 +838,15 @@ static void synaptics_secure_touch_notify(struct synaptics_rmi4_data *data)
 }
 static irqreturn_t synaptics_filter_interrupt(struct synaptics_rmi4_data *data)
 {
-	if (atomic_read(&data->st_enabled)) {
-		if (atomic_cmpxchg(&data->st_pending_irqs, 0, 1) == 0) {
-			synaptics_secure_touch_notify(data);
-			wait_for_completion_interruptible(
-				&data->st_irq_processed);
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) {
+		if (atomic_read(&data->st_enabled)) {
+			if (atomic_cmpxchg(&data->st_pending_irqs, 0, 1) == 0) {
+				synaptics_secure_touch_notify(data);
+				wait_for_completion_interruptible(
+					&data->st_irq_processed);
+			}
+			return IRQ_HANDLED;
 		}
-		return IRQ_HANDLED;
 	}
 	return IRQ_NONE;
 }
@@ -907,29 +854,16 @@ static void synaptics_secure_touch_stop(
 	struct synaptics_rmi4_data *data,
 	int blocking)
 {
-	if (atomic_read(&data->st_enabled)) {
-		atomic_set(&data->st_pending_irqs, -1);
-		synaptics_secure_touch_notify(data);
-		if (blocking)
-			wait_for_completion_interruptible(&data->st_powerdown);
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) {
+		if (atomic_read(&data->st_enabled)) {
+			atomic_set(&data->st_pending_irqs, -1);
+			synaptics_secure_touch_notify(data);
+			if (blocking)
+				wait_for_completion_interruptible(&data->st_powerdown);
+		}
 	}
 }
-#else
-static void synaptics_secure_touch_init(struct synaptics_rmi4_data *data)
-{
-}
-static irqreturn_t synaptics_filter_interrupt(struct synaptics_rmi4_data *data)
-{
-	return IRQ_NONE;
-}
-static void synaptics_secure_touch_stop(
-	struct synaptics_rmi4_data *data,
-	int blocking)
-{
-}
-#endif
 
-#if defined(CONFIG_SECURE_TOUCH)
 static ssize_t synaptics_secure_touch_enable_show(struct device *dev,
 				    struct device_attribute *attr, char *buf)
 {
@@ -998,13 +932,7 @@ static ssize_t synaptics_secure_touch_enable_store(struct device *dev,
 			err = -EIO;
 			break;
 		}
-#if 0
-		if (synaptics_secure_touch_clk_prepare_enable(data) < 0) {
-			pm_runtime_put_sync(adapter);
-			err = -EIO;
-			break;
-		}
-#endif
+
 		reinit_completion(&data->st_powerdown);
 		reinit_completion(&data->st_irq_processed);
 		atomic_set(&data->st_enabled, 1);
@@ -1052,7 +980,6 @@ static ssize_t synaptics_secure_touch_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%u", val);
 
 }
-#endif
 
 static DEVICE_ATTR(panel_color, S_IRUSR, synaptics_rmi4_panel_color_show, NULL);
 static DEVICE_ATTR(panel_vendor, S_IRUSR, synaptics_rmi4_panel_vendor_show, NULL);
@@ -5204,25 +5131,23 @@ static int synaptics_rmi4_probe(struct platform_device *pdev)
 		goto err_sysfs;
 	}
 
-#if defined(CONFIG_SECURE_TOUCH)
-	retval = sysfs_create_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch.attr);
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) {
+		retval = sysfs_create_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch.attr);
+		if (retval < 0) {
+			dev_err(&pdev->dev,
+				"%s: Failed to create sysfs attributes\n",
+				__func__);
+			goto err_sysfs_secure;
+		}
 
-	if (retval < 0) {
-		dev_err(&pdev->dev,
-			"%s: Failed to create sysfs attributes\n",
-			__func__);
-		goto err_sysfs_secure;
+		retval = sysfs_create_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch_enable.attr);
+		if (retval < 0) {
+			dev_err(&pdev->dev,
+				"%s: Failed to create sysfs attributes\n",
+				__func__);
+			goto err_sysfs_secure_enable;
+		}
 	}
-
-	retval = sysfs_create_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch_enable.attr);
-
-	if (retval < 0) {
-		dev_err(&pdev->dev,
-			"%s: Failed to create sysfs attributes\n",
-			__func__);
-		goto err_sysfs_secure_enable;
-	}
-#endif
 
 	retval = sysfs_create_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_panel_vendor.attr);
 
@@ -5293,13 +5218,13 @@ err_clickdump:
 	device_destroy(rmi4_data->syna_tp_class, 0x20);
 #endif
 err_sysfs_panel_vendor:
-#if defined(CONFIG_SECURE_TOUCH)
+if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) {
 	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch_enable.attr);
 err_sysfs_secure_enable:
 	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch.attr);
 err_sysfs_secure:
 	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_panel_color.attr);
-#endif
+}
 err_sysfs:
 	for (attr_count--; attr_count >= 0; attr_count--) {
 		sysfs_remove_file(&rmi4_data->input_dev->dev.kobj,
@@ -5396,10 +5321,10 @@ static int synaptics_rmi4_remove(struct platform_device *pdev)
 #endif
 
 	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_panel_vendor.attr);
-#if defined(CONFIG_SECURE_TOUCH)
-	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch_enable.attr);
-	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch.attr);
-#endif
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_POLARIS) {
+		sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch_enable.attr);
+		sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_secure_touch.attr);
+	}
 	sysfs_remove_file(&rmi4_data->pdev->dev.parent->kobj, &dev_attr_panel_color.attr);
 
 	for (attr_count = 0; attr_count < ARRAY_SIZE(attrs); attr_count++) {

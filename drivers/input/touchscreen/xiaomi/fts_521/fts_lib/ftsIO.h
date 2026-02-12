@@ -46,7 +46,6 @@ int changeSAD(u8 sad);
 int fts_read(u8 *outBuf, int byteToRead);
 int fts_writeRead(u8 *cmd, int cmdLength, u8 *outBuf, int byteToRead);
 int fts_write(u8 *cmd, int cmdLength);
-int fts_read_dma_safe(u8 *outBuf, int byteToRead);
 int fts_writeRead_dma_safe(u8 *cmd, int cmdLength, u8 *outBuf, int byteToRead);
 int fts_write_dma_safe(u8 *cmd, int cmdLength);
 int fts_writeFwCmd(u8 *cmd, int cmdLenght);

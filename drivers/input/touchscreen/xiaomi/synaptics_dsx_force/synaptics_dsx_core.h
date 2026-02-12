@@ -47,11 +47,10 @@
 #include <linux/earlysuspend.h>
 #endif
 
-#if defined(CONFIG_SECURE_TOUCH)
 #include <linux/completion.h>
 #include <linux/atomic.h>
 #include <linux/clk.h>
-#endif
+#include <soc/qcom/socinfo.h>
 
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 38))
 #define KERNEL_ABOVE_2_6_38
@@ -443,7 +442,6 @@ struct synaptics_rmi4_data {
 	struct proc_dir_entry *tp_fw_version_proc;
 	struct proc_dir_entry *tp_lockdown_info_proc;
 
-#if defined(CONFIG_SECURE_TOUCH)
 	atomic_t st_enabled;
 	atomic_t st_pending_irqs;
 	bool st_initialized;
@@ -451,7 +449,6 @@ struct synaptics_rmi4_data {
 	struct completion st_irq_processed;
 	struct clk *core_clk;
 	struct clk *iface_clk;
-#endif
 	bool palm_sensor_changed;
 };
 

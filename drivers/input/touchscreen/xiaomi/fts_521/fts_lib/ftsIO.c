@@ -293,159 +293,113 @@ int fts_write(u8 *cmd, int cmdLength)
 	return OK;
 }
 
-#ifdef CONFIG_I2C_BY_DMA
 /**
  * same as above but can be used when enable DMA.
  */
-int fts_read_dma_safe(u8 *outBuf, int byteToRead)
-{
-
-	int ret;
-	struct fts_dma_buf *dma = fts_info->dma_buf;
-	u8 *malcBuf = dma->rdBuf;
-	u8 *tmpBuf = NULL;
-	u8 *finalBuf;
-
-	mutex_lock(&dma->dmaBufLock);
-	/*use malloc buf*/
-	if (byteToRead > 1) {
-		   /*extend malloc buf*/
-		if (unlikely(byteToRead > PAGE_SIZE)) {
-			tmpBuf = kzalloc(byteToRead, GFP_KERNEL);
-			if (!tmpBuf) {
-				pr_err("%s: ERROR alloc mem failed!", __func__);
-				mutex_unlock(&dma->dmaBufLock);
-				return ERROR_ALLOC;
-			}
-			finalBuf = tmpBuf;
-		} else {
-			finalBuf = malcBuf;
-		}
-	} else {
-		finalBuf = outBuf;
-	}
-
-	ret = fts_read(finalBuf, byteToRead);
-	if ((ret == OK) && (byteToRead > 1)) {
-		memcpy(outBuf, finalBuf, byteToRead);
-	}
-	if (unlikely(tmpBuf))
-		kfree(tmpBuf);
-	mutex_unlock(&dma->dmaBufLock);
-
-	return ret;
-}
-
 int fts_writeRead_dma_safe(u8 *cmd, int cmdLength, u8 *outBuf, int byteToRead)
 {
-	int ret;
-	struct fts_dma_buf *dma = fts_info->dma_buf;
-	u8 *malcRdBuf = dma->rdBuf;
-	u8 *malcWrBuf = dma->wrBuf;
-	u8 *rdBuf, *tmpRdBuf = NULL;
-	u8 *wrBuf, *tmpWrBuf = NULL;
+	if (i2c_by_dma()) {
+		int ret;
+		struct fts_dma_buf *dma = fts_info->dma_buf;
+		u8 *malcRdBuf = dma->rdBuf;
+		u8 *malcWrBuf = dma->wrBuf;
+		u8 *rdBuf, *tmpRdBuf = NULL;
+		u8 *wrBuf, *tmpWrBuf = NULL;
 
-	mutex_lock(&dma->dmaBufLock);
-	if (cmdLength > 1) {
-		if (unlikely(cmdLength > PAGE_SIZE)) {
-			tmpWrBuf = kzalloc(cmdLength, GFP_KERNEL);
-			if (!tmpWrBuf) {
-				pr_err("%s: ERROR alloc mem failed!", __func__);
-				mutex_unlock(&dma->dmaBufLock);
-				return ERROR_ALLOC;
+		mutex_lock(&dma->dmaBufLock);
+		if (cmdLength > 1) {
+			if (unlikely(cmdLength > PAGE_SIZE)) {
+				tmpWrBuf = kzalloc(cmdLength, GFP_KERNEL);
+				if (!tmpWrBuf) {
+					pr_err("%s: ERROR alloc mem failed!", __func__);
+					mutex_unlock(&dma->dmaBufLock);
+					return ERROR_ALLOC;
+				}
+				wrBuf = tmpWrBuf;
+			} else {
+				wrBuf = malcWrBuf;
 			}
-			wrBuf = tmpWrBuf;
+			memcpy(wrBuf, cmd, cmdLength);
 		} else {
-			wrBuf = malcWrBuf;
+			wrBuf = cmd;
 		}
-		memcpy(wrBuf, cmd, cmdLength);
-	} else {
-		wrBuf = cmd;
-	}
 
-	if (byteToRead > 1) {
-		if (unlikely(byteToRead > PAGE_SIZE)) {
-			tmpRdBuf = kzalloc(byteToRead, GFP_KERNEL);
-			if (!tmpRdBuf) {
-				pr_err("%s: ERROR alloc mem failed!", __func__);
-				if (tmpWrBuf)
-					kfree(tmpWrBuf);
-				mutex_unlock(&dma->dmaBufLock);
-				return ERROR_ALLOC;
+		if (byteToRead > 1) {
+			if (unlikely(byteToRead > PAGE_SIZE)) {
+				tmpRdBuf = kzalloc(byteToRead, GFP_KERNEL);
+				if (!tmpRdBuf) {
+					pr_err("%s: ERROR alloc mem failed!", __func__);
+					if (tmpWrBuf)
+						kfree(tmpWrBuf);
+					mutex_unlock(&dma->dmaBufLock);
+					return ERROR_ALLOC;
+				}
+				rdBuf = tmpRdBuf;
+			} else {
+				rdBuf = malcRdBuf;
 			}
-			rdBuf = tmpRdBuf;
 		} else {
-			rdBuf = malcRdBuf;
+			rdBuf = outBuf;
 		}
+
+		ret = fts_writeRead(wrBuf, cmdLength, rdBuf, byteToRead);
+		if ((ret == OK) && (byteToRead > 1))
+			memcpy(outBuf, rdBuf, byteToRead);
+
+		if (unlikely(tmpRdBuf))
+			kfree(tmpRdBuf);
+		if (unlikely(tmpWrBuf))
+			kfree(tmpWrBuf);
+		mutex_unlock(&dma->dmaBufLock);
+
+		return ret;
+
 	} else {
-		rdBuf = outBuf;
+		return fts_writeRead(cmd, cmdLength, outBuf, byteToRead);
 	}
-
-	ret = fts_writeRead(wrBuf, cmdLength, rdBuf, byteToRead);
-	if ((ret == OK) && (byteToRead > 1))
-		memcpy(outBuf, rdBuf, byteToRead);
-
-	if (unlikely(tmpRdBuf))
-		kfree(tmpRdBuf);
-	if (unlikely(tmpWrBuf))
-		kfree(tmpWrBuf);
-	mutex_unlock(&dma->dmaBufLock);
-
-	return ret;
 }
 
 int fts_write_dma_safe(u8 *cmd, int cmdLength)
 {
-	int ret;
-	struct fts_dma_buf *dma = fts_info->dma_buf;
-	u8 *malcBuf = dma->wrBuf;
-	u8 *tmpBuf = NULL;
-	u8 *finalBuf;
+	if (i2c_by_dma()) {
+		int ret;
+		struct fts_dma_buf *dma = fts_info->dma_buf;
+		u8 *malcBuf = dma->wrBuf;
+		u8 *tmpBuf = NULL;
+		u8 *finalBuf;
 
-	mutex_lock(&dma->dmaBufLock);
-	/*use malloc buf*/
-	if (cmdLength > 1) {
-		/*extend malloc buf*/
-		if (unlikely(cmdLength > PAGE_SIZE)) {
-			tmpBuf = kzalloc(cmdLength, GFP_KERNEL);
-			if (!tmpBuf) {
-				pr_err("%s: ERROR alloc mem failed!", __func__);
-				mutex_unlock(&dma->dmaBufLock);
-				return ERROR_ALLOC;
+		mutex_lock(&dma->dmaBufLock);
+		/*use malloc buf*/
+		if (cmdLength > 1) {
+			/*extend malloc buf*/
+			if (unlikely(cmdLength > PAGE_SIZE)) {
+				tmpBuf = kzalloc(cmdLength, GFP_KERNEL);
+				if (!tmpBuf) {
+					pr_err("%s: ERROR alloc mem failed!", __func__);
+					mutex_unlock(&dma->dmaBufLock);
+					return ERROR_ALLOC;
+				}
+				finalBuf = tmpBuf;
+			} else {
+				finalBuf = malcBuf;
 			}
-			finalBuf = tmpBuf;
+			memcpy(finalBuf, cmd, cmdLength);
 		} else {
-			finalBuf = malcBuf;
+			finalBuf = cmd;
 		}
-		memcpy(finalBuf, cmd, cmdLength);
-	} else {
-		finalBuf = cmd;
-	}
 
-	ret = fts_write(finalBuf, cmdLength);
+		ret = fts_write(finalBuf, cmdLength);
 
-	if (unlikely(tmpBuf))
-		kfree(tmpBuf);
-	mutex_unlock(&dma->dmaBufLock);
-
+		if (unlikely(tmpBuf))
+			kfree(tmpBuf);
+		mutex_unlock(&dma->dmaBufLock);
 
 	return ret;
-}
-#else
-int fts_read_dma_safe(u8 *outBuf, int byteToRead)
-{
-	return fts_read(outBuf, byteToRead);
-}
-int fts_writeRead_dma_safe(u8 *cmd, int cmdLength, u8 *outBuf, int byteToRead)
-{
-	return fts_writeRead(cmd, cmdLength, outBuf, byteToRead);
-}
-int fts_write_dma_safe(u8 *cmd, int cmdLength)
-{
-	return fts_write(cmd, cmdLength);
-}
-#endif
 
+	} else {
+		return fts_write(cmd, cmdLength);
+	}
+}
 
 /**
 * Write a FW command to the IC and check automatically the echo event

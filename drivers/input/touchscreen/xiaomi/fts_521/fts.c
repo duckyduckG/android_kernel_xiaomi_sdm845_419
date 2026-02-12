@@ -46,11 +46,9 @@
 #include <linux/i2c-dev.h>
 #include <linux/spi/spi.h>
 #include <linux/completion.h>
-#ifdef CONFIG_SECURE_TOUCH
 #include <linux/atomic.h>
 #include <linux/sysfs.h>
 #include <linux/hardirq.h>
-#endif
 
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
@@ -2310,7 +2308,6 @@ static ssize_t fts_fp_state_get(struct device *dev,
 }
 #endif
 
-#ifdef CONFIG_SECURE_TOUCH
 static void fts_secure_touch_notify (struct fts_ts_info *info)
 {
 	/*might sleep*/
@@ -2485,8 +2482,6 @@ static ssize_t fts_secure_touch_show (struct device *dev, struct device_attribut
 	}
 	return scnprintf(buf, PAGE_SIZE, "%d", value);
 }
-#endif
-
 
 static DEVICE_ATTR(fts_lockdown, (S_IRUGO | S_IWUSR | S_IWGRP),
 		   fts_lockdown_show, fts_lockdown_store);
@@ -2602,10 +2597,8 @@ static struct attribute *fts_attr_group[] = {
 static DEVICE_ATTR(fp_state, S_IRUGO, fts_fp_state_get,  NULL);
 #endif
 
-#ifdef CONFIG_SECURE_TOUCH
 DEVICE_ATTR(secure_touch_enable, (S_IRUGO | S_IWUSR | S_IWGRP), fts_secure_touch_enable_show,  fts_secure_touch_enable_store);
 DEVICE_ATTR(secure_touch, (S_IRUGO | S_IWUSR | S_IWGRP), fts_secure_touch_show,  NULL);
-#endif
 /**@}*/
 /**@}*/
 
@@ -3354,12 +3347,11 @@ static irqreturn_t fts_event_handler(int irq, void *ts_info)
 	unsigned char *evt_data;
 	event_dispatch_handler_t event_handler;
 
-#ifdef CONFIG_SECURE_TOUCH
-	if (!fts_secure_filter_interrupt(info)) {
-		return IRQ_HANDLED;
+	if (secure_touch()) {
+		if (!fts_secure_filter_interrupt(info)) {
+			return IRQ_HANDLED;
+		}
 	}
-#endif
-
 	if (info->dev_pm_suspend) {
 		error = wait_for_completion_timeout(&info->dev_pm_suspend_completion, msecs_to_jiffies(700));
 		if (!error) {
@@ -4037,9 +4029,9 @@ static void fts_resume_work(struct work_struct *work)
 	struct fts_ts_info *info;
 	info = container_of(work, struct fts_ts_info, resume_work);
 
-#ifdef CONFIG_SECURE_TOUCH
-	fts_secure_stop(info, true);
-#endif
+	if (secure_touch()) {
+		fts_secure_stop(info, true);
+	}
 
 	info->resume_bit = 1;
 #ifdef CONFIG_INPUT_PRESS_NDT
@@ -4065,9 +4057,9 @@ static void fts_suspend_work(struct work_struct *work)
 	struct fts_ts_info *info;
 	info = container_of(work, struct fts_ts_info, suspend_work);
 
-#ifdef CONFIG_SECURE_TOUCH
-	fts_secure_stop(info, true);
-#endif
+	if (secure_touch()) {
+		fts_secure_stop(info, true);
+	}
 
 	info->resume_bit = 0;
 	fts_mode_handler(info, 0);
@@ -5026,8 +5018,7 @@ static const struct file_operations tpdbg_operations = {
 };
 #endif
 
-#ifdef CONFIG_SECURE_TOUCH
-int fts_secure_init(struct fts_ts_info *info)
+static int fts_secure_init(struct fts_ts_info *info)
 {
 	int ret;
 	struct fts_secure_info *scr_info = kmalloc(sizeof(*scr_info), GFP_KERNEL);
@@ -5080,7 +5071,6 @@ void fts_secure_remove(struct fts_ts_info *info)
 	kfree(scr_info);
 }
 
-#endif
 
 
 /**
@@ -5359,36 +5349,37 @@ static int fts_probe(struct spi_device *client)
 		goto ProbeErrorExit_6;
 	}
 
-#ifdef CONFIG_SECURE_TOUCH
-	pr_info("Create secure touch file...\n");
-	error = fts_secure_init(info);
-	if (error < 0) {
-		pr_err("ERROR: init secure touch failed!\n");
-		goto ProbeErrorExit_7;
+	if (secure_touch()) {
+		pr_info("Create secure touch file...\n");
+		error = fts_secure_init(info);
+		if (error < 0) {
+			pr_err("ERROR: init secure touch failed!\n");
+			goto ProbeErrorExit_7;
+		}
+		pr_info("Create secure touch file successful\n");
+		fts_secure_stop(info, 1);
 	}
-	pr_info("Create secure touch file successful\n");
-	fts_secure_stop(info, 1);
-#endif
 
-#ifdef CONFIG_I2C_BY_DMA
-	/*dma buf init*/
-	info->dma_buf = (struct fts_dma_buf *)kzalloc(sizeof(*info->dma_buf), GFP_KERNEL);
-	if (!info->dma_buf) {
-		pr_err("ERROR: alloc mem failed!\n");
-		goto ProbeErrorExit_7;
+	if (i2c_by_dma()) {
+		/*dma buf init*/
+		info->dma_buf = (struct fts_dma_buf *)kzalloc(sizeof(*info->dma_buf), GFP_KERNEL);
+		if (!info->dma_buf) {
+			pr_err("ERROR: alloc mem failed!\n");
+			goto ProbeErrorExit_7;
+		}
+		mutex_init(&info->dma_buf->dmaBufLock);
+		info->dma_buf->rdBuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+		if (!info->dma_buf->rdBuf) {
+			pr_err("ERROR: alloc mem failed!\n");
+			goto ProbeErrorExit_7;
+		}
+		info->dma_buf->wrBuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
+		if (!info->dma_buf->wrBuf) {
+			pr_err("ERROR: alloc mem failed!\n");
+			goto ProbeErrorExit_7;
+		}
 	}
-	mutex_init(&info->dma_buf->dmaBufLock);
-	info->dma_buf->rdBuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!info->dma_buf->rdBuf) {
-		pr_err("ERROR: alloc mem failed!\n");
-		goto ProbeErrorExit_7;
-	}
-	info->dma_buf->wrBuf = kzalloc(PAGE_SIZE, GFP_KERNEL);
-	if (!info->dma_buf->wrBuf) {
-		pr_err("ERROR: alloc mem failed!\n");
-		goto ProbeErrorExit_7;
-	}
-#endif
+
 	fts_info = info;
 	error = fts_get_lockdown_info(info->lockdown_info, info);
 
@@ -5498,17 +5489,17 @@ ProbeErrorExit_8:
     info->fts_tp_class = NULL;
 
 ProbeErrorExit_7:
-#ifdef CONFIG_SECURE_TOUCH
+	if (secure_touch()) {
 		fts_secure_remove(info);
-#endif
-#ifdef CONFIG_I2C_BY_DMA
-	if (info->dma_buf)
-		kfree(info->dma_buf);
-	if (info->dma_buf->rdBuf)
-		kfree(info->dma_buf->rdBuf);
-	if (info->dma_buf->wrBuf)
-		kfree(info->dma_buf->wrBuf);
-#endif
+	}
+	if (i2c_by_dma()) {
+		if (info->dma_buf)
+			kfree(info->dma_buf);
+		if (info->dma_buf->rdBuf)
+			kfree(info->dma_buf->rdBuf);
+		if (info->dma_buf->wrBuf)
+			kfree(info->dma_buf->wrBuf);
+	}
 #ifdef CONFIG_DRM
 	drm_unregister_client(&info->notifier);
 #endif
@@ -5574,9 +5565,9 @@ static int fts_remove(struct spi_device *client)
 	fts_enable_reg(info, false);
 	fts_get_reg(info, false);
 	fts_info = NULL;
-#ifdef CONFIG_SECURE_TOUCH
-	fts_secure_remove(info);
-#endif
+	if (secure_touch()) {
+		fts_secure_remove(info);
+	}
 	/* free all */
 	kfree(info);
 
