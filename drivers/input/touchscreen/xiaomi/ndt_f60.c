@@ -58,14 +58,18 @@ static ssize_t pressure_erase_fw_store(struct device *dev, struct device_attribu
 static ssize_t pressure_force_update_fw_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 #endif
 static ssize_t pressure_fw_info_show(struct device *dev, struct device_attribute *attr, char *buf);
+#ifdef CONFIG_TOUCHSCREEN_ST_FTS_V521
 static ssize_t pressure_pressure_show(struct device *dev, struct device_attribute *attr, char *buf);
+#endif
 static ssize_t ndt_threshold_show(struct device *dev, struct device_attribute *attr, char *buf);
 static ssize_t ndt_reset_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t ndt_irq_enable_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t ndt_threshold_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static ssize_t ndt_reset_and_read_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
 static DEVICE_ATTR(fw_info, 0444, pressure_fw_info_show, NULL);
+#ifdef CONFIG_TOUCHSCREEN_ST_FTS_V521
 static DEVICE_ATTR(pressure, 0444, pressure_pressure_show, NULL);
+#endif
 static DEVICE_ATTR(reset, 0200, NULL, ndt_reset_store);
 static DEVICE_ATTR(irq_enable, 0200, NULL, ndt_irq_enable_store);
 static DEVICE_ATTR(reset_and_read, 0200, NULL, ndt_reset_and_read_store);
@@ -78,7 +82,9 @@ static DEVICE_ATTR(fw_update_force, (S_IRUGO | S_IWUSR | S_IWGRP), pressure_upda
 
 static struct attribute *ndt_attr[] = {
 	&dev_attr_fw_info.attr,
+#ifdef CONFIG_TOUCHSCREEN_ST_FTS_V521
 	&dev_attr_pressure.attr,
+#endif
 	&dev_attr_reset.attr,
 	&dev_attr_irq_enable.attr,
 	&dev_attr_reset_and_read.attr,
@@ -679,6 +685,7 @@ static ssize_t pressure_force_update_fw_store(struct device *dev, struct device_
 
 #endif
 
+#ifdef CONFIG_TOUCHSCREEN_ST_FTS_V521
 static ssize_t pressure_pressure_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	int pressure, count;
@@ -690,6 +697,7 @@ static ssize_t pressure_pressure_show(struct device *dev, struct device_attribut
 	count = snprintf(buf, PAGE_SIZE, "Pressure:%d\n", pressure);
 	return count;
 }
+#endif
 
 static ssize_t pressure_fw_info_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
