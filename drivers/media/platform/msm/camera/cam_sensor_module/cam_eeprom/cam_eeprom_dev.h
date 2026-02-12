@@ -14,6 +14,7 @@
 
 #include <linux/i2c.h>
 #include <linux/gpio.h>
+#include <soc/qcom/socinfo.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-subdev.h>
 #include <media/v4l2-ioctl.h>
@@ -43,13 +44,11 @@
 #define MSM_EEPROM_MEM_MAP_PROPERTIES_CNT      8
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_ROHM_BU64753
 #define EEPROM_MAP_DATA_CNT 60
 #define EEPROM_READ_START_INDEX 7856
 #define EEPROM_READ_END_INDEX 7915
 #define LITEON_VENDOR_ID 0x15
 #define BACK_CAMERA_LILTEON_EEPROM_ADDR 0xA0
-#endif
 #endif
 
 enum cam_eeprom_state {

@@ -26,10 +26,7 @@
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 #define FIRMWARE_NAME "bu64748gwz.prog"
 #define ACTUATOR_TRANS_SIZE 32
-
-#ifdef CONFIG_USE_ROHM_BU64753
 extern uint8_t g_eeprom_mapdata[EEPROM_MAP_DATA_CNT];
-#endif
 #endif
 
 int32_t cam_actuator_construct_default_power_setting(
@@ -74,7 +71,6 @@ free_power_settings:
 }
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_ROHM_BU64753
 struct cam_sensor_i2c_reg_array actuator_driver_init0_0 = {
 		0x07, 0x0000, 0x00, 0x0
 };
@@ -327,9 +323,7 @@ static int cam_actuator_eeprom_data_write(
 	}
 	return rc;
 }
-#endif
 
-#ifdef CONFIG_USE_BU64748
 struct cam_sensor_i2c_reg_array actuator_init0_array[] = {
 	{0x82ef, 0x0000, 0x00, 0x0},
 	{0x82ef, 0x8000, 0x00, 0x0},
@@ -501,7 +495,6 @@ static int cam_actuator_fw_download(struct cam_actuator_ctrl_t *a_ctrl)
 	return rc;
 }
 #endif
-#endif
 
 static int32_t cam_actuator_power_up(struct cam_actuator_ctrl_t *a_ctrl)
 {
@@ -586,13 +579,13 @@ static int32_t cam_actuator_power_down(struct cam_actuator_ctrl_t *a_ctrl)
 	}
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_ROHM_BU64753
-	if (a_ctrl->io_master_info.cci_client->sid == ROHM_ACTUATOR_II2_ADDR)
-		rc = cam_actuator_write_power_off_cmd(a_ctrl);
-	if (rc) {
-		CAM_ERR(CAM_ACTUATOR, "eeprom driver write failed:%d", rc);
+	if ((get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) || (get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS)) {
+		if (a_ctrl->io_master_info.cci_client->sid == ROHM_ACTUATOR_II2_ADDR)
+			rc = cam_actuator_write_power_off_cmd(a_ctrl);
+		if (rc) {
+			CAM_ERR(CAM_ACTUATOR, "eeprom driver write failed:%d", rc);
+		}
 	}
-#endif
 #endif
 
 	soc_private =
@@ -695,10 +688,10 @@ int32_t cam_actuator_slaveInfo_pkt_parser(struct cam_actuator_ctrl_t *a_ctrl,
 		a_ctrl->io_master_info.cci_client->sid =
 			i2c_info->slave_addr >> 1;
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_BU64748
-		a_ctrl->io_master_info.cci_client->retries = 3;
-		a_ctrl->io_master_info.cci_client->id_map = 0;
-#endif
+		if (get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM) {
+			a_ctrl->io_master_info.cci_client->retries = 3;
+			a_ctrl->io_master_info.cci_client->id_map = 0;
+		}
 #endif
 		CAM_DBG(CAM_ACTUATOR, "Slave addr: 0x%x Freq Mode: %d",
 			i2c_info->slave_addr, i2c_info->i2c_freq_mode);
@@ -920,12 +913,9 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 #endif
 	struct cam_actuator_soc_private *soc_private = NULL;
 	struct cam_sensor_power_ctrl_t  *power_info = NULL;
-
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_ROHM_BU64753
 	struct cam_sensor_cci_client *cci_client = NULL;
 	struct camera_io_master *io_master_info = NULL;
-#endif
 #endif
 
 	if (!a_ctrl || !arg) {
@@ -1066,60 +1056,59 @@ int32_t cam_actuator_i2c_pkt_parse(struct cam_actuator_ctrl_t *a_ctrl,
 			a_ctrl->cam_act_state = CAM_ACTUATOR_CONFIG;
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_ROHM_BU64753
-		io_master_info = &(a_ctrl->io_master_info);
-		cci_client = io_master_info->cci_client;
+		if ((get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) || (get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS)) {
+			io_master_info = &(a_ctrl->io_master_info);
+			cci_client = io_master_info->cci_client;
 
-		if ((cci_client != NULL) && ((cci_client->sid) == ROHM_ACTUATOR_II2_ADDR)) {
-			rc = cam_actuator_eeprom_data_write(g_eeprom_mapdata, a_ctrl);
-			if (rc < 0) {
-				CAM_ERR(CAM_ACTUATOR, "Write Init Driver Data To Actuator failed");
+			if ((cci_client != NULL) && ((cci_client->sid) == ROHM_ACTUATOR_II2_ADDR)) {
+				rc = cam_actuator_eeprom_data_write(g_eeprom_mapdata, a_ctrl);
+				if (rc < 0) {
+					CAM_ERR(CAM_ACTUATOR, "Write Init Driver Data To Actuator failed");
+				}
 			}
 		}
-#endif
 
-#ifdef CONFIG_USE_BU64748
+		if (get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM) {
 			if (a_ctrl->io_master_info.cci_client->sid == 0xEC/2)
 			{
 				rc = cam_actuator_fw_download(a_ctrl);
-
 				if (rc) {
 					CAM_ERR(CAM_ACTUATOR, "Failed ACTUATOR FW Download");
 					return rc;
 				}
 			}
-#endif
+		}
 #endif
 		}
 
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_BU64748
-		CAM_ERR(CAM_ACTUATOR, "before init setting dac sid num %x ", a_ctrl->io_master_info.cci_client->sid);
-		if (a_ctrl->io_master_info.cci_client->sid == 0x18/2)
-		{
+		if (get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM) {
+			CAM_ERR(CAM_ACTUATOR, "bu64748: before init setting dac sid num %x ", a_ctrl->io_master_info.cci_client->sid);
+			if (a_ctrl->io_master_info.cci_client->sid == 0x18/2)
+			{
+				rc = cam_actuator_apply_settings(a_ctrl,
+						&a_ctrl->i2c_data.init_settings);
+				CAM_ERR(CAM_ACTUATOR, "init setting dac");
+				if (rc < 0) {
+					CAM_ERR(CAM_ACTUATOR, "Cannot apply Init settings");
+					return rc;
+				}
+			}
+		}
+#endif
+
+		if (get_hw_version_platform() != HARDWARE_PLATFORM_BERYLLIUM) {
 			rc = cam_actuator_apply_settings(a_ctrl,
-					&a_ctrl->i2c_data.init_settings);
+				&a_ctrl->i2c_data.init_settings);
+#if defined(CONFIG_MACH_XIAOMI_SDM845)
 			CAM_ERR(CAM_ACTUATOR, "init setting dac");
+#endif
 			if (rc < 0) {
 				CAM_ERR(CAM_ACTUATOR, "Cannot apply Init settings");
 				return rc;
 			}
 		}
-#endif
-#endif
-
-#ifndef CONFIG_USE_BU64748
-		rc = cam_actuator_apply_settings(a_ctrl,
-			&a_ctrl->i2c_data.init_settings);
-#if defined(CONFIG_MACH_XIAOMI_SDM845)
-		CAM_ERR(CAM_ACTUATOR, "init setting dac");
-#endif
-		if (rc < 0) {
-			CAM_ERR(CAM_ACTUATOR, "Cannot apply Init settings");
-			return rc;
-		}
-#endif
 
 		/* Delete the request even if the apply is failed */
 		rc = delete_request(&a_ctrl->i2c_data.init_settings);

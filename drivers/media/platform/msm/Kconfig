@@ -11,14 +11,6 @@ menuconfig SPECTRA_CAMERA
 
 source "drivers/media/platform/msm/vidc_3x/Kconfig"
 
-config USE_BU64748
-    bool "use BU64748 acculator"
-    default n
-
-config USE_ROHM_BU64753
-    bool "use ROHM BU64753 acculator"
-    default n
-
 menuconfig MSM_CAMERA
      bool "QTI MSM camera and video capture support"
      depends on ARCH_QCOM && VIDEO_V4L2 && I2C

@@ -98,7 +98,6 @@ static int cam_actuator_subdev_close(struct v4l2_subdev *sd,
 }
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_BU64748
 static int32_t cam_actuator_update_i2c_info(struct cam_actuator_ctrl_t *a_ctrl,
 	struct cam_actuator_i2c_info_t *i2c_info)
 {
@@ -120,7 +119,6 @@ static int32_t cam_actuator_update_i2c_info(struct cam_actuator_ctrl_t *a_ctrl,
 
 	return 0;
 }
-#endif
 #endif
 
 static struct v4l2_subdev_core_ops cam_actuator_subdev_core_ops = {
@@ -392,13 +390,13 @@ static int32_t cam_actuator_driver_platform_probe(
 		goto free_mem;
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_BU64748
-	rc = cam_actuator_update_i2c_info(a_ctrl, &soc_private->i2c_info);
-	if (rc) {
-		CAM_ERR(CAM_ACTUATOR, "failed: to update i2c info rc %d", rc);
-		goto unreg_subdev;
+	if (get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM) {
+		rc = cam_actuator_update_i2c_info(a_ctrl, &soc_private->i2c_info);
+		if (rc) {
+			CAM_ERR(CAM_ACTUATOR, "failed: to update i2c info rc %d", rc);
+			goto unreg_subdev;
+		}
 	}
-#endif
 #endif
 
 	a_ctrl->bridge_intf.device_hdl = -1;
@@ -418,10 +416,10 @@ static int32_t cam_actuator_driver_platform_probe(
 	return rc;
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_BU64748
+if (get_hw_version_platform() == HARDWARE_PLATFORM_BERYLLIUM) {
 unreg_subdev:
 	cam_unregister_subdev(&(a_ctrl->v4l2_dev_str));
-#endif
+}
 #endif
 free_mem:
 	kfree(a_ctrl->i2c_data.per_frame);

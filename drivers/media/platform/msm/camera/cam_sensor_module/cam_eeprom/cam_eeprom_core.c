@@ -21,10 +21,8 @@
 #include "cam_packet_util.h"
 
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
-#ifdef CONFIG_USE_ROHM_BU64753
 uint8_t g_eeprom_mapdata[EEPROM_MAP_DATA_CNT] = {0};
 EXPORT_SYMBOL(g_eeprom_mapdata);
-#endif
 #endif
 
 /**
@@ -156,7 +154,7 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 			}
 #endif
 
-#ifdef CONFIG_USE_ROHM_BU64753
+		if ((get_hw_version_platform() == HARDWARE_PLATFORM_DIPPERN) || (get_hw_version_platform() == HARDWARE_PLATFORM_PERSEUS)) {
 			if ((memptr != NULL) &&
 				(memptr[1] == LITEON_VENDOR_ID) &&
 				(emap[j].saddr == BACK_CAMERA_LILTEON_EEPROM_ADDR) &&
@@ -164,7 +162,7 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 				memset(g_eeprom_mapdata, 0, ARRAY_SIZE(g_eeprom_mapdata));
 				memcpy(g_eeprom_mapdata, memptr+EEPROM_READ_START_INDEX, EEPROM_MAP_DATA_CNT);
 			}
-#endif
+		}
 #if defined(CONFIG_MACH_XIAOMI_SDM845)
 			memptr += emap[j].mem.valid_size;
 #endif
