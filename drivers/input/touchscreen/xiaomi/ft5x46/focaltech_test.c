@@ -54,7 +54,7 @@ static int fts_i2c_read_test(unsigned char *writebuf, int writelen,
 {
 	int iret = -1;
 
-	iret = fts_i2c_read(fts_i2c_client, writebuf,
+	iret = fts_i2c_read_ft5x46(fts_i2c_client, writebuf,
 			writelen, readbuf, readlen);
 	return iret;
 
@@ -64,7 +64,7 @@ static int fts_i2c_write_test(unsigned char *writebuf, int writelen)
 {
 	int iret = -1;
 
-	iret = fts_i2c_write(fts_i2c_client, writebuf, writelen);
+	iret = fts_i2c_write_ft5x46(fts_i2c_client, writebuf, writelen);
 	return iret;
 }
 
@@ -317,31 +317,31 @@ static const struct file_operations tp_selftest_ops = {
 
 
 /************************************************************************
-* Name: fts_i2c_write_reg
+* Name: fts_i2c_write_reg_ft5x46
 * Brief: write register
 * Input: i2c info, reg address, reg value
 * Output: no
 * Return: fail <0
 ***********************************************************************/
-int fts_i2c_write_reg(struct i2c_client *client, u8 regaddr, u8 regvalue)
+int fts_i2c_write_reg_ft5x46(struct i2c_client *client, u8 regaddr, u8 regvalue)
 {
 	u8 buf[2] = { 0 };
 
 	buf[0] = regaddr;
 	buf[1] = regvalue;
-	return fts_i2c_write(client, buf, sizeof(buf));
+	return fts_i2c_write_ft5x46(client, buf, sizeof(buf));
 }
 
 /************************************************************************
-* Name: fts_i2c_read_reg
+* Name: fts_i2c_read_reg_ft5x46
 * Brief: read register
 * Input: i2c info, reg address, reg value
 * Output: get reg value
 * Return: fail <0
 ***********************************************************************/
-int fts_i2c_read_reg(struct i2c_client *client, u8 regaddr, u8 *regvalue)
+int fts_i2c_read_reg_ft5x46(struct i2c_client *client, u8 regaddr, u8 *regvalue)
 {
-	return fts_i2c_read(client, &regaddr, 1, regvalue, 1);
+	return fts_i2c_read_ft5x46(client, &regaddr, 1, regvalue, 1);
 }
 
 /************************************************************************
@@ -358,11 +358,11 @@ static int StartScan(struct i2c_client *client)
 	const u8 MaxTimes = 20;  //The longest wait 160ms
 	u8 ret = -1;
 
-	ret = fts_i2c_write_reg(client, 0x00, 0xC0);
+	ret = fts_i2c_write_reg_ft5x46(client, 0x00, 0xC0);
 	if (ret >= 0) {
 		while (times++ < MaxTimes) {		//Wait for the scan to complete
 			msleep(8);		//8ms
-			ret = fts_i2c_read_reg(client, 0x00, &RegVal);
+			ret = fts_i2c_read_reg_ft5x46(client, 0x00, &RegVal);
 			if (RegVal == 0x40)
 				break;
 		}
@@ -385,7 +385,7 @@ int read_rawdata(struct i2c_client *client, int is_diff, s16 *data, int len)
 	int ret = 0;
 
 	FTS_TEST_DBG("len=%d, is_diff=%d", len, is_diff);
-	ret = fts_i2c_write_reg(client, 0x06, is_diff);
+	ret = fts_i2c_write_reg_ft5x46(client, 0x06, is_diff);
 	if (ret < 0) {
 		FTS_TEST_ERROR("read rawdata fail");
 		return ret;
@@ -396,18 +396,18 @@ int read_rawdata(struct i2c_client *client, int is_diff, s16 *data, int len)
 		return ret;
 	}
 
-	ret = fts_i2c_write_reg(client, 0x01, 0xAD);
+	ret = fts_i2c_write_reg_ft5x46(client, 0x01, 0xAD);
 
 	if (len <= 256)
-		ret = fts_i2c_read(client, &reg, 1, regdata, len);
+		ret = fts_i2c_read_ft5x46(client, &reg, 1, regdata, len);
 	else{
-		ret = fts_i2c_read(client, &reg, 1, regdata, 256);
+		ret = fts_i2c_read_ft5x46(client, &reg, 1, regdata, 256);
 		remain_bytes = len - 256;
 		for (i = 1; remain_bytes > 0; i++) {
 			if (remain_bytes > 256)
-				ret = fts_i2c_read(client, &reg, 0, regdata + i * 256, 256);
+				ret = fts_i2c_read_ft5x46(client, &reg, 0, regdata + i * 256, 256);
 			else
-				ret = fts_i2c_read(client, &reg, 0, regdata + i * 256, remain_bytes);
+				ret = fts_i2c_read_ft5x46(client, &reg, 0, regdata + i * 256, remain_bytes);
 			remain_bytes -= 256;
 		}
 	}
@@ -441,7 +441,7 @@ static int32_t c_show(struct seq_file *m, void *v)
 
 	/* 0xEE = 1, not clb */
 	FTS_TEST_ERROR("write data auto cal 0xee = 1");
-	ret = fts_i2c_write_reg(fts_i2c_client, 0xEE, 1);
+	ret = fts_i2c_write_reg_ft5x46(fts_i2c_client, 0xEE, 1);
 	if (ret < 0) {
 		FTS_TEST_ERROR("write data auto cal fail");
 		ret = -EFAULT;
@@ -450,9 +450,9 @@ static int32_t c_show(struct seq_file *m, void *v)
 
 	/* Enter Factory Mode */
 	FTS_TEST_ERROR("enter factory mode");
-	ret = fts_i2c_write_reg(fts_i2c_client, 0x00, 0x40);
+	ret = fts_i2c_write_reg_ft5x46(fts_i2c_client, 0x00, 0x40);
 	do {
-		ret = fts_i2c_read_reg(fts_i2c_client, 0x00, &val);
+		ret = fts_i2c_read_reg_ft5x46(fts_i2c_client, 0x00, &val);
 		if (val == 0x40)
 			break;
 		msleep(1);
@@ -463,8 +463,8 @@ static int32_t c_show(struct seq_file *m, void *v)
 		goto out;
 	}
 
-	ret = fts_i2c_read_reg(fts_i2c_client, 0x02, &txlen);
-	ret = fts_i2c_read_reg(fts_i2c_client, 0x03, &rxlen);
+	ret = fts_i2c_read_reg_ft5x46(fts_i2c_client, 0x02, &txlen);
+	ret = fts_i2c_read_reg_ft5x46(fts_i2c_client, 0x03, &rxlen);
 	/* read_rawdata */
 	FTS_TEST_ERROR("read rawdata diff data");
 	ret = read_rawdata(fts_i2c_client, 1, data, txlen * rxlen * 2);
@@ -509,14 +509,14 @@ static int32_t c_show(struct seq_file *m, void *v)
 
 	/* Enter in work mode */
 	FTS_TEST_ERROR("enter in work mode");
-	ret = fts_i2c_write_reg(fts_i2c_client, 0x00, 0x00);
+	ret = fts_i2c_write_reg_ft5x46(fts_i2c_client, 0x00, 0x00);
 	if (ret < 0) {
 		FTS_TEST_ERROR("write data auto cal fail");
 		ret = -EFAULT;
 		goto out;
 	}
 	do {
-		ret = fts_i2c_read_reg(fts_i2c_client, 0x00, &val);
+		ret = fts_i2c_read_reg_ft5x46(fts_i2c_client, 0x00, &val);
 		if (val == 0x00)
 			break;
 		msleep(1);

@@ -85,9 +85,9 @@ enum PROOF_TYPE {
 int fts_test_module_init(struct i2c_client *client);
 int fts_test_module_exit(struct i2c_client *client);
 extern struct i2c_client *fts_i2c_client;
-extern int fts_i2c_write(struct i2c_client *client,
+extern int fts_i2c_write_ft5x46(struct i2c_client *client,
 		char *writebuf, int writelen);
-extern int fts_i2c_read(struct i2c_client *client,
+extern int fts_i2c_read_ft5x46(struct i2c_client *client,
 		char *writebuf, int writelen, char *readbuf, int readlen);
 void focal_msleep(int ms);
 void SysDelay(int ms);
