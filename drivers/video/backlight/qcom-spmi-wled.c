@@ -462,13 +462,17 @@ static int wled5_set_brightness(struct wled *wled, u16 brightness)
 static int wled4_set_brightness(struct wled *wled, u16 brightness)
 {
 	int rc, i;
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	u16 low_limit = wled->max_brightness * 4 / 1000;
+#endif
 	u8 string_cfg = wled->cfg.string_cfg;
 	u8 v[2];
 
+#if !defined(CONFIG_MACH_XIAOMI_SDM845)
 	/* WLED4's lower limit of operation is 0.4% */
 	if (brightness > 0 && brightness < low_limit)
 		brightness = low_limit;
+#endif
 
 	v[0] = brightness & 0xff;
 	v[1] = (brightness >> 8) & 0xf;
