@@ -1016,6 +1016,7 @@ int create_pkt_cmd_session_set_property(
 		pkt->size += sizeof(struct hfi_frame_rate);
 		break;
 	}
+#ifndef CONFIG_ARCH_SDM845
 	case HAL_CONFIG_OPERATING_RATE:
 	{
 		struct hfi_operating_rate *hfi;
@@ -1028,6 +1029,7 @@ int create_pkt_cmd_session_set_property(
 		pkt->size += sizeof(struct hfi_operating_rate);
 		break;
 	}
+#endif
 	case HAL_PARAM_UNCOMPRESSED_FORMAT_SELECT:
 	{
 		u32 buffer_type;
