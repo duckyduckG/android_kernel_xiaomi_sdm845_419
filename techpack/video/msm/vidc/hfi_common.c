@@ -118,11 +118,12 @@ static inline int __boot_firmware_common(
 		struct venus_hfi_device *device, u32 sid);
 static void __setup_ucregion_memory_map_common(
 		struct venus_hfi_device *device, u32 sid);
+static void clock_config_on_enable_vpu4(struct venus_hfi_device *device, u32 sid);
 
 struct venus_hfi_vpu_ops vpu4_ops = {
 	.interrupt_init = __interrupt_init_ar50,
 	.setup_ucregion_memmap = __setup_ucregion_memory_map_common,
-	.clock_config_on_enable = NULL,
+	.clock_config_on_enable = clock_config_on_enable_vpu4,
 	.reset_ahb2axi_bridge = NULL,
 	.power_off = __power_off_common,
 	.prepare_pc = __prepare_pc_common,
@@ -4139,6 +4140,12 @@ err_activate_fail:
 	__release_subcaches(device, sid);
 	__disable_subcaches(device, sid);
 	return 0;
+}
+
+static void clock_config_on_enable_vpu4(struct venus_hfi_device *device, u32 sid)
+{
+	__write_register(device, VPU4_WRAPPER_CLOCK_CONFIG, 0, sid);
+	__write_register(device, VPU4_WRAPPER_CPU_CLOCK_CONFIG, 0, sid);
 }
 
 static int __set_subcaches(struct venus_hfi_device *device, u32 sid)

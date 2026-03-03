@@ -42,8 +42,10 @@ static const char *const vp9_level[] = {
 	"4.1",
 	"5.0",
 	"5.1",
+#ifdef VDEC_VP9_LEVEL61_AVAILABLE
 	"6.0",
 	"6.1",
+#endif
 	NULL
 };
 
@@ -265,8 +267,13 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.name = "VP9 Level",
 		.type = V4L2_CTRL_TYPE_MENU,
 		.minimum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_UNUSED,
+#ifdef VDEC_VP9_LEVEL61_AVAILABLE
 		.maximum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_61,
 		.default_value = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_61,
+#else
+		.maximum = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51,
+		.default_value = V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_51,
+#endif
 		.menu_skip_mask = ~(
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_UNUSED) |
 		(1 << V4L2_MPEG_VIDC_VIDEO_VP9_LEVEL_1) |
@@ -378,6 +385,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.default_value = V4L2_MPEG_MSM_VIDC_ENABLE,
 		.step = 1,
 	},
+#ifndef CONFIG_ARCH_SDM845
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE,
 		.name = "Decoder Operating rate",
@@ -388,6 +396,7 @@ static struct msm_vidc_ctrl msm_vdec_ctrls[] = {
 		.step = 1,
 		.qmenu = NULL,
 	},
+#endif
 	{
 		.id = V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_MODE,
 		.name = "Low Latency Mode",
@@ -924,6 +933,7 @@ int msm_vdec_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_MPEG_VIDC_VIDEO_PRIORITY:
 		break;
+#ifndef CONFIG_ARCH_SDM845
 	case V4L2_CID_MPEG_VIDC_VIDEO_OPERATING_RATE:
 		if (!is_valid_operating_rate(inst, ctrl->val))
 			break;
@@ -942,6 +952,7 @@ int msm_vdec_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		else
 			inst->clk_data.operating_rate = ctrl->val;
 		break;
+#endif
 	case V4L2_CID_MPEG_VIDC_VIDEO_LOWLATENCY_MODE:
 		inst->clk_data.low_latency_mode = !!ctrl->val;
 		inst->batch.enable = is_batching_allowed(inst);
