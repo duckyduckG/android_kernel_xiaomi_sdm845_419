@@ -19,7 +19,7 @@
 #include <linux/types.h>
 #include <linux/msm_ion.h>
 #include <media/msm_vidc_private.h>
-#include <media/msm_vidc_utils.h>
+#include <media/msm_vidc_utils_msmnile.h>
 
 #define HAL_BUFFER_MAX 0xe
 
