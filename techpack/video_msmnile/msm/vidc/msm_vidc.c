@@ -521,6 +521,12 @@ int msm_vidc_qbuf(void *instance, struct v4l2_buffer *b)
 		return -EINVAL;
 	}
 
+	if (!IS_ALIGNED(b->m.planes[0].length, SZ_4K)) {
+		dprintk(VIDC_ERR, "qbuf: %x: buffer size not 4K aligned - %u\n",
+			hash32_ptr(inst->session), b->m.planes[0].length);
+		return -EINVAL;
+	}
+
 	q = msm_comm_get_vb2q(inst, b->type);
 	if (!q) {
 		dprintk(VIDC_ERR,
@@ -529,6 +535,12 @@ int msm_vidc_qbuf(void *instance, struct v4l2_buffer *b)
 	}
 	mutex_lock(&q->lock);
 
+	if ((inst->out_flush && b->type == V4L2_BUF_TYPE_VIDEO_OUTPUT_MPLANE) || inst->in_flush) {
+		dprintk(VIDC_ERR,
+			"%s: %x: in flush, discarding qbuf, type %u, index %u\n",
+			__func__, hash32_ptr(inst->session), b->type, b->index);
+		return -EINVAL;
+	}
 
 	for (i = 0; i < b->length; i++) {
 		b->m.planes[i].m.fd = b->m.planes[i].reserved[0];
@@ -1551,7 +1563,9 @@ static void msm_vidc_buf_queue(struct vb2_buffer *vb2)
 		rc = msm_vidc_queue_buf(inst, vb2);
 	if (rc) {
 		print_vb2_buffer(VIDC_ERR, "failed vb2-qbuf", inst, vb2);
-		msm_comm_generate_session_error(inst);
+		vb2_buffer_done(vb2, VB2_BUF_STATE_DONE);
+		msm_vidc_queue_v4l2_event(inst,
+			V4L2_EVENT_MSM_VIDC_SYS_ERROR);
 	}
 }
 
