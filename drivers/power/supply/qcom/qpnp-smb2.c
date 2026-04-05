@@ -206,7 +206,11 @@ struct smb2 {
 	bool			bad_part;
 };
 
+#ifdef CONFIG_MACH_XIAOMI_SDM845
+static int __debug_mask = PR_OEM | PR_MISC;
+#else
 static int __debug_mask;
+#endif
 
 static int __weak_chg_icl_ua = 500000;
 static ssize_t weak_chg_icl_ua_show(struct device *dev, struct device_attribute
