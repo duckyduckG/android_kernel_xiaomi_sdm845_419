@@ -77,7 +77,7 @@
 					qcom,psci-cpu-mode = <0x4>;
 					qcom,entry-latency-us = <69>;
 					qcom,exit-latency-us = <531>;
-					qcom,min-residency-us = <3934>;
+					qcom,min-residency-us = <5991>;
 					qcom,is-reset;
 					qcom,use-broadcast-timer;
 				};
@@ -121,7 +121,7 @@
 					qcom,psci-cpu-mode = <0x4>;
 					qcom,entry-latency-us = <61>;
 					qcom,exit-latency-us = <1061>;
-					qcom,min-residency-us = <1001>;
+					qcom,min-residency-us = <1123>;
 					qcom,is-reset;
 					qcom,use-broadcast-timer;
 				};
