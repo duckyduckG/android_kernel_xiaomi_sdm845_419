@@ -18,13 +18,6 @@ struct afe_ultrasound_set_params_t {
 	uint32_t  payload[ELLIPTIC_SET_PARAMS_SIZE];
 } __packed;
 
-struct afe_ultrasound_config_command {
-	struct apr_hdr                      hdr;
-	struct afe_port_cmd_set_param_v2    param;
-	struct afe_port_param_data_v2       pdata;
-	struct afe_ultrasound_set_params_t  prot_config;
-} __packed;
-
 /** Sequence of Elliptic Labs Ultrasound module parameters */
 
 /** Elliptic APR public  */
